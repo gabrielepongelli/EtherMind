@@ -14,13 +14,13 @@ enum MatchState {
 }
 
 /**
- * Node representing a match inside the doubly-linked list of pending
+ * Node representing a match inside the circular doubly-linked list of pending
  * publicly-accessible matches.
  */
 struct MatchNode {
-    GameState.State game; // Game data
-    address next; // Next pending match in the doubly-linked list
-    address prev; // Previous pending match in the doubly-linked list
+    Game.State game; // Game data
+    address next; // Next pending match in the circular doubly-linked list
+    address prev; // Previous pending match in the circular doubly-linked list
     MatchState state; // State of the match.
 }
 
@@ -28,9 +28,9 @@ struct MatchNode {
  * Structure that handles matchmaking.
  */
 struct Matches {
-    mapping(address => MatchNode) existingMatches; // all the matches that currently exist
-    address head; // first pending match in the doubly-linked list
-    uint nPendingMatches; // total number of existing pending publicly-accessible matches
+    mapping(address => MatchNode) existingMatches; // All the matches that currently exist
+    address head; // First pending match in the circular doubly-linked list
+    uint nPendingMatches; // Total number of existing pending publicly-accessible matches
 }
 
 library MatchRegister {
@@ -49,7 +49,7 @@ library MatchRegister {
     function addMatch(
         Matches storage self,
         address id,
-        GameState.State calldata state,
+        Game.State calldata state,
         bool isPrivate
     ) public returns (bool) {
         if (id == address(0)) {
@@ -70,6 +70,11 @@ library MatchRegister {
         } else {
             address newPrev = self.existingMatches[self.head].prev;
             address newNext = self.head;
+
+            if (self.head == address(0)) {
+                newPrev = id;
+                newNext = id;
+            }
 
             self.existingMatches[id] = MatchNode({
                 game: state,
@@ -98,7 +103,7 @@ library MatchRegister {
     function getMatch(
         Matches storage self,
         address id
-    ) public view returns (GameState.State storage) {
+    ) public view returns (Game.State storage) {
         return self.existingMatches[id].game;
     }
 
@@ -145,6 +150,10 @@ library MatchRegister {
             node.next = address(0);
 
             self.nPendingMatches--;
+
+            if (id == self.head) {
+                self.head = node.next;
+            }
         }
 
         node.state = MatchState.STARTED;
@@ -173,6 +182,18 @@ library MatchRegister {
         address id
     ) public view returns (bool) {
         return self.existingMatches[id].state == MatchState.PRIVATE_PENDING;
+    }
+
+    /**
+     * Check whether a match is already started or not.
+     * @param self Matchmaking structure to use.
+     * @param id The id of the match to check.
+     */
+    function isStarted(
+        Matches storage self,
+        address id
+    ) public view returns (bool) {
+        return self.existingMatches[id].state == MatchState.STARTED;
     }
 
     /**
@@ -241,7 +262,7 @@ library MatchRegister {
     function iterateGet(
         Matches storage self,
         Iterator it
-    ) internal view returns (address, GameState.State storage) {
+    ) internal view returns (address, Game.State storage) {
         address addr = Iterator.unwrap(it);
         return (addr, self.existingMatches[addr].game);
     }

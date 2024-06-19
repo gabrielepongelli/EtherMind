@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-library GameState {
+library Game {
     struct State {
-        uint tmp;
+        address creator; // Player who created the match
+        address challenger; // Player who joined the match
+        uint stake; // Money proposed for the game stake (in wei)
     }
 }
