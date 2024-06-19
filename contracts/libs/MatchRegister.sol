@@ -49,7 +49,7 @@ library MatchRegister {
     function addMatch(
         Matches storage self,
         address id,
-        Game.State calldata state,
+        Game.State memory state,
         bool isPrivate
     ) internal returns (bool) {
         if (id == address(0)) {
