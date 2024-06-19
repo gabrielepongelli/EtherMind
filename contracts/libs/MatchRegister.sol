@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import "./GameState.sol";
+import "./Game.sol";
 
 /**
  * States in which a match can be.

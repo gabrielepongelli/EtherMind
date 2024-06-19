@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 // Uncomment this line to use console.log
 //import "hardhat/console.sol";
-import "./libs/GameState.sol";
+import "./libs/Game.sol";
 import "./libs/MatchRegister.sol";
 
 contract EtherMind {
