@@ -51,7 +51,7 @@ library MatchRegister {
         address id,
         Game.State calldata state,
         bool isPrivate
-    ) public returns (bool) {
+    ) internal returns (bool) {
         if (id == address(0)) {
             return false;
         }
@@ -103,7 +103,7 @@ library MatchRegister {
     function getMatch(
         Matches storage self,
         address id
-    ) public view returns (Game.State storage) {
+    ) internal view returns (Game.State storage) {
         return self.existingMatches[id].game;
     }
 
@@ -115,7 +115,7 @@ library MatchRegister {
     function isValid(
         Matches storage self,
         address id
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         if (id == address(0)) {
             return false;
         }
@@ -133,7 +133,7 @@ library MatchRegister {
     function setMatchStarted(
         Matches storage self,
         address id
-    ) public returns (bool) {
+    ) internal returns (bool) {
         MatchNode storage node = self.existingMatches[id];
         if (
             node.state == MatchState.STARTED ||
@@ -168,7 +168,7 @@ library MatchRegister {
     function isPublicPending(
         Matches storage self,
         address id
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         return self.existingMatches[id].state == MatchState.OPEN_PENDING;
     }
 
@@ -180,7 +180,7 @@ library MatchRegister {
     function isPrivatePending(
         Matches storage self,
         address id
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         return self.existingMatches[id].state == MatchState.PRIVATE_PENDING;
     }
 
@@ -192,7 +192,7 @@ library MatchRegister {
     function isStarted(
         Matches storage self,
         address id
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         return self.existingMatches[id].state == MatchState.STARTED;
     }
 
@@ -203,7 +203,10 @@ library MatchRegister {
      * @return True if the match is successfully ended, or false if the match
      * was not already started.
      */
-    function endMatch(Matches storage self, address id) public returns (bool) {
+    function endMatch(
+        Matches storage self,
+        address id
+    ) internal returns (bool) {
         if (self.existingMatches[id].state != MatchState.STARTED) {
             return false;
         }
@@ -216,7 +219,9 @@ library MatchRegister {
      * Get the total number of publicly accessible pending matche.
      * @param self Matchmaking structure to use.
      */
-    function nPendingMatches(Matches storage self) public view returns (uint) {
+    function nPendingMatches(
+        Matches storage self
+    ) internal view returns (uint) {
         return self.nPendingMatches;
     }
 
@@ -226,7 +231,7 @@ library MatchRegister {
      */
     function iteratePendingMatches(
         Matches storage self
-    ) public view returns (Iterator) {
+    ) internal view returns (Iterator) {
         return Iterator.wrap(self.head);
     }
 
