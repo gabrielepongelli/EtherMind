@@ -18,6 +18,8 @@ contract game {
 
     }
 
+    enum status {ROUND_PLAYING,ROUND_END,GAME_END}
+
     //array of structs for the whole game (ID,players,ecc)
     struct Game {
         uint matchID;
@@ -32,8 +34,9 @@ contract game {
         Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
         uint points_cr; //poins counter, all slots in storage are implicitly zero until set to something else.
         uint points_ch;
-        uint256 last_activity;
+        uint256 holdOffTimestamp;
         uint n_of_rounds;
+        status gameStatus;
         //status?
         //to fill
     }
@@ -44,6 +47,7 @@ contract game {
     uint private nTurns = 3; 
     uint private nGuesses = 12;
     uint private extraPoints = 6;
+    uint256 public waitUntil = 90; //holdoff time to give challenger time to dispute
 
     event Failure(string stringFailure);
     event DepositHashSolution(address indexed _from, bytes32  _hashToStore, uint indexed _idOfMatch);
@@ -52,6 +56,8 @@ contract game {
     event EndOfGuesses(address indexed _from, uint indexed _idOfMatch);
     event EndOfRound(address indexed _from, Move _solutionOfRound, uint indexed _idOfMatch);
     event PunishmentDispensed(address indexed _from, string reason, uint indexed _idOfMatch);
+    event RewardDispensed(address indexed _from, uint pointsCr, uint pointsCh, uint reward, uint indexed _idOfMatch);
+    event EndOfMatch(address indexed _from, uint pointsCr, uint pointsCh, uint indexed _idOfMatch);
 
     constructor() {}
 
@@ -65,18 +71,6 @@ contract game {
         revert("Game not found: no active game for this ID");
     }
     
-    function saveGameHash(uint _id, bytes32 hashToSave) private {
-        for (uint i = 0; i < masterMind.length; i++) {
-            if (masterMind[i].matchID == _id) {
-                //reset history
-                delete masterMind[i].movesHistory;
-                delete masterMind[i].feedbackHistory;
-                masterMind[i].hashOfSolution = hashToSave;
-                return;
-            }
-        }
-        revert("Game not found: no active game for this ID");
-    }
 
     function actOnAfkFlag(uint _id,bool _set) private {
         for (uint i = 0; i < masterMind.length; i++) {
@@ -118,13 +112,25 @@ contract game {
     //code maker is checked, the hash uploaded
     function uploadCodeHash(uint matchID, bytes32 uploadedHash) public onlyCodeMaker(matchID){
 
-        //TO DO make some mechanism that checks if roles are initialized and if they are to swap them when rounds ends
+        //TO DO make some mechanism that checks if roles are initialized and if they are to swap them when rounds end
 
         //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is alled it means that no dipute is necessary
         //i put it in sameGameHash, match id search already done there
-        //maybe some checks on the hash? IDK
-        saveGameHash(matchID,uploadedHash);//if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
-        emit DepositHashSolution(msg.sender,uploadedHash,matchID);
+        //maybe some checks on the hash? ID
+        //if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
+        for (uint i = 0; i < masterMind.length; i++) {
+            if (masterMind[i].matchID == matchID) {
+                //reset history
+                delete masterMind[i].movesHistory;
+                delete masterMind[i].feedbackHistory;
+                //new game status
+                masterMind[i].gameStatus = status.ROUND_PLAYING;
+                masterMind[i].hashOfSolution = uploadedHash;
+                emit DepositHashSolution(msg.sender,uploadedHash,matchID);
+                return;
+            }
+        }        
+        revert("Game not found: no active game for this ID");
     }
 
     //true: all ok false:problem
@@ -152,8 +158,8 @@ contract game {
             }
     }
 
-    function hashNumbers(uint num1, uint num2, uint num3, uint num4) public pure returns (bytes32) {
-         // Ensure the numbers are single digits
+    function hashNumbers(uint num1, uint num2, uint num3, uint num4) private pure returns (bytes32) {
+        // Ensure the numbers are single digits
         require(num1 < 10 && num2 < 10 && num3 < 10 && num4 < 10, "Each number must be a valid choise (1-6)");
         // Concatenate the numbers by shifting their positions
         uint concatenatedNumber = (num1 * 1000) + (num2 * 100) + (num3 * 10) + num4;
@@ -173,6 +179,9 @@ contract game {
         //upload the guess in the array of moves
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
+                //require round started
+                require(masterMind[i].gameStatus == status.ROUND_PLAYING ,"round not started");
+
                 //must check that i didn't already made a guess that is waiting for an answer
                 if (masterMind[i].movesHistory.length == masterMind[i].feedbackHistory.length){
 
@@ -202,6 +211,9 @@ contract game {
         //upload the guess in the array of moves
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
+                //require round started
+                require(masterMind[i].gameStatus == status.ROUND_PLAYING ,"round not started");
+
                 //if n. of round reached end the game
                 if(masterMind[i].movesHistory.length < nGuesses){ //nGuesses reached REMEMBER AT THE END OF A ROUND IF NO COMPLAIN IS RAISED YOU NEED TO EMPTY THE HISTORY OF THIS WONT WORK
                 
@@ -211,7 +223,7 @@ contract game {
                         emit DepositFeedback(msg.sender,uploadedFeedback,matchID);//meit given feedback
                     }else if (masterMind[i].movesHistory.length == masterMind[i].feedbackHistory.length){
                         
-                        //must wait, feedback not yet returned
+                        //must wait, guess not yet given
                         revert("error, must wait guess not yet made");//non sono sicuro se qui il revert vada bene come error handling
                     }else{
 
@@ -251,71 +263,142 @@ contract game {
                         masterMind[i].points_ch += masterMind[i].movesHistory.length;
                     }
                 }
+                return;
             }
         }
         revert("Game not found: no active game for this ID");
     }
 
-    function checkWinner() private{
+    function checkWinner(uint matchID) public payable{//ASK IS THIS OKAY TO BE PUBLIC?
         //i assume that i already checked and updated the scores
-        //if this is called by the codemaker force him to wait 
-    }
-
-    function punish(uint matchID, string reason, uint toPunish) private payable{
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
-                // Ensure the contract has enough balance to make the transfer
+                //in order to determine the winner i must first check that the round is over
+                require(masterMind[i].gameStatus == status.GAME_END ,"game not finished");
+
                 require(address(this).balance >= masterMind[i].currentStake, "Insufficient balance in contract");
 
-                if(toPunish == 0)//the creator must be punished
-                {
-                    // Transfer the amount to the recipient
-                    (bool success, ) = masterMind[i].creator.call{value: masterMind[i].currentStake}("");
-                    require(success, "Transfer failed.");
-                    emit PunishmentDispensed(msg.sender,reason,matchID);
-                }else if(toPunish == 1)//the challenger must be punished
-                {
-                    // Transfer the amount to the recipient
-                    (bool success, ) = masterMind[i].challenger.call{value: masterMind[i].currentStake}("");
-                    require(success, "Transfer failed.");
-                    emit PunishmentDispensed(msg.sender,reason,matchID);
-                }else{
-                    revert("internal error");
+                //if this is called by the codemaker force him to wait otherwise do it immidiately
+                if (
+                    (msg.sender == masterMind[i].creator && masterMind[i].cMaster == 1) ||
+                    (msg.sender == masterMind[i].challenger && masterMind[i].cMaster == 0)
+                ) {
+                    // Perform the operation immediately
+                    if(masterMind[i].points_cr > masterMind[i].points_ch)
+                    {
+                        // Transfer the amount to the recipient
+                        (bool success, ) = masterMind[i].creator.call{value: masterMind[i].currentStake}("");
+                        require(success, "Transfer failed.");
+                        emit RewardDispensed(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,masterMind[i].currentStake,matchID);
+                    }else if(masterMind[i].points_cr < masterMind[i].points_ch)
+                    {
+                        // Transfer the amount to the recipient
+                        (bool success, ) = masterMind[i].challenger.call{value: masterMind[i].currentStake}("");
+                        require(success, "Transfer failed.");
+                        emit RewardDispensed(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,masterMind[i].currentStake,matchID);
+                    }else{//its a draw
+                        uint halfreward = masterMind[i].currentStake / 2; //solidity will truncate automatically
+                        (bool success, ) = masterMind[i].challenger.call{value: halfreward}("");
+                        require(success, "Transfer failed.");
+                        (success, ) = masterMind[i].creator.call{value: halfreward}("");
+                        require(success, "Transfer failed.");
+                        emit RewardDispensed(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,masterMind[i].currentStake,matchID);
+
+                    }
+
+                } else if (block.timestamp >= masterMind[i].holdOffTimestamp) {
+
+                    // Perform the operation if the current time is past the waitUntil time
+                    if(masterMind[i].points_cr > masterMind[i].points_ch)
+                    {
+                        // Transfer the amount to the recipient
+                        (bool success, ) = masterMind[i].creator.call{value: masterMind[i].currentStake}("");
+                        require(success, "Transfer failed.");
+                        emit RewardDispensed(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,masterMind[i].currentStake,matchID);
+                    }else if(masterMind[i].points_cr < masterMind[i].points_ch)
+                    {
+                        // Transfer the amount to the recipient
+                        (bool success, ) = masterMind[i].challenger.call{value: masterMind[i].currentStake}("");
+                        require(success, "Transfer failed.");
+                        emit RewardDispensed(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,masterMind[i].currentStake,matchID);
+                    }else{//its a draw
+                        uint halfreward = masterMind[i].currentStake / 2; //solidity will truncate automatically
+                        (bool success, ) = masterMind[i].challenger.call{value: halfreward}("");
+                        require(success, "Transfer failed.");
+                        (success, ) = masterMind[i].creator.call{value: halfreward}("");
+                        require(success, "Transfer failed.");
+                        emit RewardDispensed(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,masterMind[i].currentStake,matchID);
+
+                    }
+                } else {
+                    // Inform the codemaster to wait until the waitUntil time
+                    revert( "Operation performed only after wait time.");
                 }
             }
         }
     }
 
-    function uploadSolution(uint matchID, Move memory solution) public onlyCodeMaker(matchID){
+    function uploadSolution(uint matchID, Move memory solution) public payable onlyCodeMaker(matchID){
         require(checkinput(solution),"the solution is impossible");
 
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 if((masterMind[i].hashOfSolution) == hashNumbers(solution.pos1,solution.pos2,solution.pos3,solution.pos4)){
                     //solution matches
-                    masterMind[i].last_activity = block.timestamp; //global variable representing the current timestamp of the block being mined
+
+                    //is this necessary for AFK? maybe not
+                //    masterMind[i].last_activity = block.timestamp; //global variable representing the current timestamp of the block being mined
+                    masterMind[i].holdOffTimestamp = block.timestamp + waitUntil;//THIS IS FOR DISPUTE CHECK
+
                     updateGameScore(matchID);
                     //have we reached the limit of rounds?
-                    if (masterMind[i].n_of_rounds == nTurns){
-                        checkwinner();
-                    }else{
-                        //keep going, next round
 
+                    if (masterMind[i].n_of_rounds == nTurns){
+                        masterMind[i].gameStatus = status.GAME_END;
+                        emit EndOfMatch(msg.sender,masterMind[i].points_cr,masterMind[i].points_ch,matchID);
+                    }else{
+                        //end of round, but not game
+                        masterMind[i].gameStatus = status.ROUND_END;
                         emit EndOfRound(msg.sender,solution,matchID);
                     }
                 }else{
                     //solution dosen't match PUNISH CODEMAKER
+                    masterMind[i].gameStatus = status.GAME_END;
+
+                    // Ensure the contract has enough balance to make the transfer
+                    require(address(this).balance >= masterMind[i].currentStake, "Insufficient balance in contract");
+
                     if (masterMind[i].cMaster == 0){
-                        punish(matchID,"false code solution provided",0);
+                        // Transfer the amount to the recipient
+                        (bool success, ) = masterMind[i].challenger.call{value: masterMind[i].currentStake}("");
+                        require(success, "Transfer failed.");
+                        emit PunishmentDispensed(msg.sender,"false code solution provided",matchID);
+                        
+
                     }else if(masterMind[i].cMaster == 1){
-                        punish(matchID,"false code solution provided",1);
+                        // Transfer the amount to the recipient
+                        (bool success, ) = masterMind[i].creator.call{value: masterMind[i].currentStake}("");
+                        require(success, "Transfer failed.");
+                        emit PunishmentDispensed(msg.sender,"false code solution provided",matchID);
+
                     }else{
-                        require("internal error");//just to be safe
+                        revert("internal error");//just to be safe
                     }
                 }
             }
         }
     }
 
+    function dispute(uint matchID) public onlyCodeBreaker(matchID){
+        for (uint i = 0; i < masterMind.length; i++) {
+            if (masterMind[i].matchID == matchID) {
+                //check that ROUND_END
+                require(masterMind[i].gameStatus == status.ROUND_END ,"round is not over");
+                require(masterMind[i].holdOffTimestamp > block.timestamp,"request is too late, dispute refuted");
+
+                //check cheating
+            }
+        }
+    }
     
 }
