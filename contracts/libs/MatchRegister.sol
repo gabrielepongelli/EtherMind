@@ -40,7 +40,6 @@ library MatchRegister {
      * Create a new match.
      * @param self Matchmaking structure to use.
      * @param id The id of the new match. Must be greater than 0.
-     * @param state The internal state of the new match.
      * @param isPrivate Specify whether the new match will be publicly
      * accessible or not.
      * @return True if the new match is successfully created, false if a match
@@ -49,7 +48,6 @@ library MatchRegister {
     function addMatch(
         Matches storage self,
         address id,
-        Game.State memory state,
         bool isPrivate
     ) internal returns (bool) {
         if (id == address(0)) {
@@ -61,12 +59,10 @@ library MatchRegister {
         }
 
         if (isPrivate) {
-            self.existingMatches[id] = MatchNode({
-                game: state,
-                next: address(0),
-                prev: address(0),
-                state: MatchState.PRIVATE_PENDING
-            });
+            MatchNode storage node = self.existingMatches[id];
+            node.next = address(0);
+            node.prev = address(0);
+            node.state = MatchState.PRIVATE_PENDING;
         } else {
             address newPrev = self.existingMatches[self.head].prev;
             address newNext = self.head;
@@ -76,12 +72,10 @@ library MatchRegister {
                 newNext = id;
             }
 
-            self.existingMatches[id] = MatchNode({
-                game: state,
-                next: newNext,
-                prev: newPrev,
-                state: MatchState.OPEN_PENDING
-            });
+            MatchNode storage node = self.existingMatches[id];
+            node.next = newNext;
+            node.prev = newPrev;
+            node.state = MatchState.PRIVATE_PENDING;
 
             self.existingMatches[newNext].prev = id;
             self.existingMatches[newPrev].next = id;
