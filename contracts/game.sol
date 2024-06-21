@@ -36,7 +36,7 @@ contract game {
         uint n_of_rounds;        
         uint points_cr; //poins counter, all slots in storage are implicitly zero until set to something else.
         uint points_ch;
-        uint256 holdOffTimestamp;
+        uint256 holdOffTimestamp;//time to start dispute
         status gameStatus;
         //status?
         //to fill
@@ -61,6 +61,7 @@ contract game {
     event RewardDispensed(address indexed _from, uint _pointsCr, uint _pointsCh, uint _reward, uint indexed _idOfMatch);
     event EndOfMatch(address indexed _from, uint _pointsCr, uint _pointsCh, uint indexed _idOfMatch);
     event AFKCheckStarted(address indexed _from, uint256 indexed afkTimestamp, uint indexed _idOfMatch);
+    event StartOfNewRound(address indexed _from, uint indexed _idOfMatch);
 
     constructor() {}
 
@@ -494,7 +495,7 @@ contract game {
                 require(masterMind[i].holdOffTimestamp > block.timestamp,"request is too late, dispute refuted");
 
                 //check cheating-> true: no cheater , false: cheater
-                if(!verifyFeedback(masterMind[i].movesHistory, masterMind[i].feedbackHistory, masterMind[i].mmSolution));
+                if(!verifyFeedback(masterMind[i].movesHistory, masterMind[i].feedbackHistory, masterMind[i].mmSolution))
                 {
                     //cheating detected, punish the codemaker
                     masterMind[i].gameStatus = status.GAME_END;
@@ -529,14 +530,14 @@ contract game {
                         // Transfer the amount to the recipient
                         (bool success, ) = masterMind[i].challenger.call{value: masterMind[i].currentStake}(""); //no gas limit?
                         require(success, "Transfer failed.");
-                        emit PunishmentDispensed(msg.sender,"codemaster cheated, false clues provided",matchID);
+                        emit PunishmentDispensed(msg.sender,"codebreaker unjustly accused codemaster",matchID);
                         
 
                     }else if(masterMind[i].cMaster == 0){
                         // Transfer the amount to the recipient
                         (bool success, ) = masterMind[i].creator.call{value: masterMind[i].currentStake}("");
                         require(success, "Transfer failed.");
-                        emit PunishmentDispensed(msg.sender,"codemaster cheated, false clues provided",matchID);
+                        emit PunishmentDispensed(msg.sender,"codebreaker unjustly accused codemaster",matchID);
 
                     }else{
                         revert("internal error");//just to be safe
@@ -546,8 +547,24 @@ contract game {
         }
     }
 
-    function accept_solution(){
 
+    //DO I NEED THIS? HOW ELSE?
+    function no_dispute(uint matchID) public{
+        //swap the roles
+        actOnAfkFlag(matchID,false);//true is set, false is unset
+
+        for (uint i = 0; i < masterMind.length; i++) {
+            if (masterMind[i].matchID == matchID) {
+                //check that ROUND_END
+                require(masterMind[i].gameStatus == status.ROUND_END,"round is not over");
+                if(masterMind[i].cMaster == 0){
+                    masterMind[i].cMaster = 1;
+                }else{
+                    masterMind[i].cMaster = 0;
+                } 
+                emit StartOfNewRound(msg.sender,matchID);
+            }
+        }
     }
 
     function can_you_wait(Game memory to_check) private view returns(bool){
