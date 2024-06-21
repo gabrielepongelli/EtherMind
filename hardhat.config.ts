@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-gas-reporter";
@@ -13,7 +15,8 @@ const config: HardhatUserConfig = {
         },
     },
     gasReporter: {
-        currency: 'EUR'
+        currency: 'EUR',
+        coinmarketcap: process.env.COINMARKETCAP_API_KEY
     }
 };
 

@@ -33,5 +33,11 @@ jobs:
       - name: Install dependencies
         run: npm install --save-dev --force
 
+      - name: Load environment variables
+        env:
+          COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+        run: |
+          echo "COINMARKETCAP_API_KEY=$COINMARKETCAP_API_KEY" >> .env
+
       - name: Run Hardhat tests
         run: npx hardhat test
