@@ -5,9 +5,11 @@ pragma solidity ^0.8.24;
 //import "hardhat/console.sol";
 import "./libs/Game.sol";
 import "./libs/MatchRegister.sol";
+import "./libs/Utils.sol";
 
 contract EtherMind {
     Matches private matches;
+    uint8 nRand;
 
     /**
      * Modifiers
@@ -95,7 +97,9 @@ contract EtherMind {
     /**
      * @dev TODO
      */
-    constructor() {}
+    constructor() {
+        nRand = 0;
+    }
 
     /**
      * Create a new match.
@@ -148,16 +152,13 @@ contract EtherMind {
         if (id == address(0)) {
             // randomly extract match
 
-            MatchRegister.Iterator it = MatchRegister.iteratePendingMatches(
-                matches
-            );
-            uint pendingMatches = MatchRegister.nPendingMatches(matches);
-
+            uint nPendingMatches = MatchRegister.nPendingMatches(matches);
+            uint rand = Utils.rand(++nRand) % nPendingMatches;
+            uint pos = rand;
             do {
-                it = MatchRegister.iterateBack(matches, it);
-                (id, game) = MatchRegister.iterateGet(matches, it);
-                pendingMatches--;
-            } while (msg.sender == game.creator && pendingMatches > 0);
+                (id, game) = MatchRegister.getPending(matches, pos);
+                pos = (pos + 1) % nPendingMatches;
+            } while (msg.sender == game.creator && pos != rand);
 
             if (msg.sender == game.creator) {
                 revert("There are no available matches");

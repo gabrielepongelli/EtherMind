@@ -8,34 +8,28 @@ import "./Game.sol";
  */
 enum MatchState {
     DO_NOT_EXIST, // A match that has not been created
-    OPEN_PENDING, // A pending publicly-accessible match
-    PRIVATE_PENDING, // A pending private match
+    PENDING, // A pending match
     STARTED // A match that is already started
 }
 
 /**
- * Node representing a match inside the circular doubly-linked list of pending
- * publicly-accessible matches.
+ * Record representing a match.
  */
-struct MatchNode {
+struct MatchRecord {
     Game.State game; // Game data
-    address next; // Next pending match in the circular doubly-linked list
-    address prev; // Previous pending match in the circular doubly-linked list
-    MatchState state; // State of the match.
+    MatchState state; // State of the match
+    uint pos; // Position in the array of pending matches incremented by 2. The value of 0 represent an invalid position in the array, instead a value of 1 represent a private pending match.
 }
 
 /**
  * Structure that handles matchmaking.
  */
 struct Matches {
-    mapping(address => MatchNode) existingMatches; // All the matches that currently exist
-    address head; // First pending match in the circular doubly-linked list
-    uint nPendingMatches; // Total number of existing pending publicly-accessible matches
+    mapping(address => MatchRecord) existingMatches; // All the matches that currently exist
+    address[] pendingMatches; // Addresses of publicly accessible pending matches
 }
 
 library MatchRegister {
-    type Iterator is address;
-
     /**
      * Create a new match.
      * @param self Matchmaking structure to use.
@@ -58,31 +52,15 @@ library MatchRegister {
             return false;
         }
 
-        if (isPrivate) {
-            MatchNode storage node = self.existingMatches[id];
-            node.next = address(0);
-            node.prev = address(0);
-            node.state = MatchState.PRIVATE_PENDING;
-        } else {
-            address newPrev = self.existingMatches[self.head].prev;
-            address newNext = self.head;
-
-            if (self.head == address(0)) {
-                newPrev = id;
-                newNext = id;
-            }
-
-            MatchNode storage node = self.existingMatches[id];
-            node.next = newNext;
-            node.prev = newPrev;
-            node.state = MatchState.PRIVATE_PENDING;
-
-            self.existingMatches[newNext].prev = id;
-            self.existingMatches[newPrev].next = id;
-            self.head = id;
-
-            self.nPendingMatches++;
+        uint pos = 1;
+        if (!isPrivate) {
+            self.pendingMatches.push(id);
+            pos = self.pendingMatches.length + 1;
         }
+
+        MatchRecord storage rec = self.existingMatches[id];
+        rec.state = MatchState.PENDING;
+        rec.pos = pos;
 
         return true;
     }
@@ -128,29 +106,33 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal returns (bool) {
-        MatchNode storage node = self.existingMatches[id];
+        MatchRecord storage rec = self.existingMatches[id];
         if (
-            node.state == MatchState.STARTED ||
-            node.state == MatchState.DO_NOT_EXIST
+            rec.state == MatchState.STARTED ||
+            rec.state == MatchState.DO_NOT_EXIST
         ) {
             return false;
         }
 
-        if (node.state == MatchState.OPEN_PENDING) {
-            self.existingMatches[node.next].prev = node.prev;
-            self.existingMatches[node.prev].next = node.next;
+        if (rec.pos > 1) {
+            if (rec.pos != self.pendingMatches.length) {
+                // the match is open, but is not the last one insterted
+                // so we swap it with the one in  the last position
 
-            node.prev = address(0);
-            node.next = address(0);
+                self.pendingMatches[rec.pos - 2] = self.pendingMatches[
+                    self.pendingMatches.length - 1
+                ];
 
-            self.nPendingMatches--;
-
-            if (id == self.head) {
-                self.head = node.next;
+                self.existingMatches[self.pendingMatches[rec.pos - 2]].pos = rec
+                    .pos;
             }
+
+            // now we can safely pop the last element of the pending matches array
+            self.pendingMatches.pop();
+            rec.pos = 0;
         }
 
-        node.state = MatchState.STARTED;
+        rec.state = MatchState.STARTED;
         return true;
     }
 
@@ -163,7 +145,7 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal view returns (bool) {
-        return self.existingMatches[id].state == MatchState.OPEN_PENDING;
+        return self.existingMatches[id].pos > 1;
     }
 
     /**
@@ -175,7 +157,7 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal view returns (bool) {
-        return self.existingMatches[id].state == MatchState.PRIVATE_PENDING;
+        return self.existingMatches[id].pos == 1;
     }
 
     /**
@@ -216,53 +198,21 @@ library MatchRegister {
     function nPendingMatches(
         Matches storage self
     ) internal view returns (uint) {
-        return self.nPendingMatches;
+        return self.pendingMatches.length;
     }
 
     /**
-     * Get an iterator over the publicly accessible pending matches.
+     * Get the game data of the publicly accessible pending match specified.
      * @param self Matchmaking structure to use.
+     * @param i Index of the public pending match to retrieve. It is assumed
+     * that i is less than the total number of public pending matches (see
+     * nPendingMatches).
      */
-    function iteratePendingMatches(
-        Matches storage self
-    ) internal view returns (Iterator) {
-        return Iterator.wrap(self.head);
-    }
-
-    /**
-     * Get the next publicly accessible pending match.
-     * @param self Matchmaking structure to use.
-     * @param it iterator to use.
-     */
-    function iterateNext(
+    function getPending(
         Matches storage self,
-        Iterator it
-    ) internal view returns (Iterator) {
-        return Iterator.wrap(self.existingMatches[Iterator.unwrap(it)].next);
-    }
-
-    /**
-     * Get the previous publicly accessible pending match.
-     * @param self Matchmaking structure to use.
-     * @param it iterator to use.
-     */
-    function iterateBack(
-        Matches storage self,
-        Iterator it
-    ) internal view returns (Iterator) {
-        return Iterator.wrap(self.existingMatches[Iterator.unwrap(it)].prev);
-    }
-
-    /**
-     * Get the game data of the publicly accessible pending match.
-     * @param self Matchmaking structure to use.
-     * @param it iterator to use.
-     */
-    function iterateGet(
-        Matches storage self,
-        Iterator it
+        uint i
     ) internal view returns (address, Game.State storage) {
-        address addr = Iterator.unwrap(it);
+        address addr = self.pendingMatches[i];
         return (addr, self.existingMatches[addr].game);
     }
 }
