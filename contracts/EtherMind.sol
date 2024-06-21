@@ -112,19 +112,7 @@ contract EtherMind {
             "You cannot create a private match with yourself"
         );
 
-        address newId = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            block.timestamp,
-                            msg.sender,
-                            block.number
-                        )
-                    )
-                )
-            )
-        );
+        address newId = address(uint160(Utils.rand(++nRand)));
 
         bool res = MatchRegister.addMatch(
             matches,
