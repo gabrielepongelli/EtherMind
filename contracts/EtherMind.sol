@@ -9,7 +9,7 @@ import "./libs/Utils.sol";
 
 contract EtherMind {
     Matches private matches;
-    uint8 nRand;
+    uint8 private nRand;
 
     /**
      * Modifiers
@@ -22,7 +22,19 @@ contract EtherMind {
     modifier onlyExistingIds(address id) {
         require(
             MatchRegister.isValid(matches, id),
-            "The match id specified does not exist"
+            "The match specified does not exist"
+        );
+        _;
+    }
+
+    /**
+     * Require that the id specified is linked to an existing match or is zero.
+     * @param id The id of the match to check.
+     */
+    modifier onlyExistingIdsOrZero(address id) {
+        require(
+            id == address(0) || MatchRegister.isValid(matches, id),
+            "Invalid match id"
         );
         _;
     }
@@ -117,7 +129,7 @@ contract EtherMind {
         bool res = MatchRegister.addMatch(
             matches,
             newId,
-            otherPlayer == address(0)
+            otherPlayer != address(0)
         );
         require(res, "An error occurred while creating the new match");
 
@@ -135,12 +147,16 @@ contract EtherMind {
     function joinMatch(
         address id,
         uint256 stake
-    ) external onlyPendingMatches(id) {
+    ) external onlyExistingIdsOrZero(id) onlyPendingMatches(id) {
         Game.State storage game;
         if (id == address(0)) {
             // randomly extract match
 
             uint nPendingMatches = MatchRegister.nPendingMatches(matches);
+            if (nPendingMatches == 0) {
+                revert("There are no available matches");
+            }
+
             uint rand = Utils.rand(++nRand) % nPendingMatches;
             uint pos = rand;
             do {
@@ -155,15 +171,16 @@ contract EtherMind {
             // specific game chosen
 
             game = MatchRegister.getMatch(matches, id);
+
+            if (msg.sender == game.creator) {
+                revert("You cannot join your own game");
+            }
+
             if (
                 MatchRegister.isPrivatePending(matches, id) &&
                 game.challenger != msg.sender
             ) {
                 revert("You are not allowed to join this match");
-            }
-
-            if (msg.sender == game.creator) {
-                revert("You cannot join your own game");
             }
         }
 
