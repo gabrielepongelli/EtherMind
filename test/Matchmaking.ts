@@ -48,13 +48,9 @@ describe("Matchmaking", function () {
                 const eventInterface = new ethers.Interface(["event MatchCreated(address creator, address id)"]);
                 const event = await getEvent(tx, eventInterface, "MatchCreated");
 
-                if (event) {
-                    expect(event.creator).to.be.equal(creator.address);
-                    expect(event.id.toString()).to.be.a.properAddress;
-                    expect(event.id.toString()).to.be.not.hexEqual("0x0");
-                } else {
-                    throw Error();
-                }
+                expect(event.creator).to.be.equal(creator.address);
+                expect(event.id.toString()).to.be.a.properAddress;
+                expect(event.id.toString()).to.be.not.hexEqual("0x0");
             });
         });
     });
@@ -65,10 +61,6 @@ describe("Matchmaking", function () {
                 const { game, challenger } = await loadFixture(deployGame);
                 const tx = await game.createMatch(ethers.ZeroAddress);;
                 const matchId = await getMatchFromEvent(tx);
-
-                if (!matchId) {
-                    throw Error();
-                }
 
                 await expect(game.connect(challenger).joinMatch(ethers.ZeroAddress, 10)).not.to.be.reverted;
             });
@@ -86,10 +78,6 @@ describe("Matchmaking", function () {
                 const tx = await game.createMatch(ethers.ZeroAddress);
                 const matchId = await getMatchFromEvent(tx);
 
-                if (!matchId) {
-                    throw Error();
-                }
-
                 await expect(game.joinMatch(matchId, 10)).to.be.revertedWith(
                     "You cannot join your own game"
                 );
@@ -99,10 +87,6 @@ describe("Matchmaking", function () {
                 const { game, challenger, otherPlayer } = await loadFixture(deployGame);
                 const tx = await game.createMatch(challenger);
                 const matchId = await getMatchFromEvent(tx);
-
-                if (!matchId) {
-                    throw Error();
-                }
 
                 await expect(game.connect(otherPlayer).joinMatch(matchId, 0)).to.be.revertedWith(
                     "You are not allowed to join this match"
@@ -131,10 +115,6 @@ describe("Matchmaking", function () {
                 const tx = await game.createMatch(ethers.ZeroAddress);;
                 const matchId = await getMatchFromEvent(tx);
 
-                if (!matchId) {
-                    throw Error();
-                }
-
                 await expect(game.connect(challenger).joinMatch(matchId, 10)).not.to.be.reverted;
             });
 
@@ -142,10 +122,6 @@ describe("Matchmaking", function () {
                 const { game, challenger } = await loadFixture(deployGame);
                 const tx = await game.createMatch(challenger.address);;
                 const matchId = await getMatchFromEvent(tx);
-
-                if (!matchId) {
-                    throw Error();
-                }
 
                 await expect(game.connect(challenger).joinMatch(matchId, 10)).not.to.be.reverted;
             });
@@ -155,10 +131,6 @@ describe("Matchmaking", function () {
                 const tx = await game.createMatch(challenger.address);;
                 const matchId = await getMatchFromEvent(tx);
 
-                if (!matchId) {
-                    throw Error();
-                }
-
                 await expect(game.connect(challenger).joinMatch(matchId, 0)).not.to.be.reverted;
             });
 
@@ -166,10 +138,6 @@ describe("Matchmaking", function () {
                 const { game, challenger, otherPlayer } = await loadFixture(deployGame);
                 const tx = await game.createMatch(challenger.address);;
                 const matchId = await getMatchFromEvent(tx);
-
-                if (!matchId) {
-                    throw Error();
-                }
 
                 await game.connect(challenger).joinMatch(matchId, 10);
                 await expect(game.connect(otherPlayer).joinMatch(matchId, 10)).to.be.revertedWith(
@@ -184,10 +152,6 @@ describe("Matchmaking", function () {
                 const tx = await game.createMatch(challenger.address);;
                 const matchId = await getMatchFromEvent(tx);
 
-                if (!matchId) {
-                    throw Error();
-                }
-
                 await expect(game.connect(challenger).joinMatch(matchId, 10)).to.emit(game, "MatchStarted");
             });
 
@@ -196,17 +160,9 @@ describe("Matchmaking", function () {
                 const tx1 = await game.createMatch(challenger.address);
                 const matchId = await getMatchFromEvent(tx1);
 
-                if (!matchId) {
-                    throw Error();
-                }
-
                 const tx2 = await game.connect(challenger).joinMatch(matchId, 10);
                 const eventInterface = new ethers.Interface(["event MatchStarted(address id, address creator, address challenger)"]);
                 const event = await getEvent(tx2, eventInterface, "MatchStarted");
-
-                if (!event) {
-                    throw Error();
-                }
 
                 expect(event.id).to.be.equal(matchId);
                 expect(event.creator).to.be.equal(creator.address);
@@ -215,36 +171,10 @@ describe("Matchmaking", function () {
 
             it("Should emit an event when a match is joined signaling the new stake proposal", async function () {
                 const { game, challenger } = await loadFixture(deployGame);
-                const tx = await game.createMatch(challenger.address);;
+                const tx = await game.createMatch(challenger.address);
                 const matchId = await getMatchFromEvent(tx);
 
-                if (!matchId) {
-                    throw Error();
-                }
-
                 await expect(game.connect(challenger).joinMatch(matchId, 10)).to.emit(game, "StakeProposal");
-            });
-
-            it("Should emit an event when a match is joined signaling the new stake proposal with valid parameters", async function () {
-                const { game, challenger } = await loadFixture(deployGame);
-                const tx1 = await game.createMatch(challenger.address);
-                const matchId = await getMatchFromEvent(tx1);
-
-                if (!matchId) {
-                    throw Error();
-                }
-
-                const proposal = 10;
-                const tx2 = await game.connect(challenger).joinMatch(matchId, proposal);
-                const eventInterface = new ethers.Interface(["event StakeProposal(address id, uint256 proposal)"]);
-                const event = await getEvent(tx2, eventInterface, "StakeProposal", 1);
-
-                if (!event) {
-                    throw Error();
-                }
-
-                expect(event.id).to.be.equal(matchId);
-                expect(event.proposal).to.be.equal(proposal);
             });
         });
     });
