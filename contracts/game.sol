@@ -121,7 +121,6 @@ contract game {
 
     //code maker is checked, the hash uploaded
     function uploadCodeHash(uint matchID, bytes32 uploadedHash) public onlyCodeMaker(matchID){
-        actOnAfkFlag(matchID,false);//true is set, false is unset
         //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is called it means that no dipute is necessary
         //maybe some checks on the hash? 
         //if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
@@ -129,6 +128,7 @@ contract game {
             if (masterMind[i].matchID == matchID) {
                 require(masterMind[i].gameStatus == status.ROUND_END || masterMind[i].gameStatus == status.GAME_START
                 ,"previous round has not ended, game has not yet started");
+                actOnAfkFlag(matchID,false);//true is set, false is unset
                 //reset history and round data
                 delete masterMind[i].movesHistory;
                 delete masterMind[i].feedbackHistory;
@@ -182,17 +182,19 @@ contract game {
 
 
     function makeGuess(uint matchID, Move memory uploadedGuess) public onlyCodeBreaker(matchID){
-        //uncheck the afk flag 
-        actOnAfkFlag(matchID,false);//true is set, false is unset
         
-        //checkinput
-        require(checkinput(uploadedGuess),"incorrectly set guess, ivalid colors");
 
         //upload the guess in the array of moves
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 //require round started
                 require(masterMind[i].gameStatus == status.ROUND_PLAYING_WAITINGFORBREAKER ,"round not started");
+
+                //uncheck the afk flag 
+                  actOnAfkFlag(matchID,false);//true is set, false is unset
+        
+                //checkinput
+                require(checkinput(uploadedGuess),"incorrectly set guess, ivalid colors");
 
                 //must check that i didn't already made a guess that is waiting for an answer (not needed anymore technically but ill'keep it anyway)
                 if (masterMind[i].movesHistory.length == masterMind[i].feedbackHistory.length){
@@ -216,17 +218,18 @@ contract game {
 
     //save feedback
     function giveFeedback(uint matchID, Feedback memory uploadedFeedback) public onlyCodeMaker(matchID){
-        //uncheck the afk flag 
-        actOnAfkFlag(matchID,false);//true is set, false is unset
-
-        //checkFeeback
-        require(checkFeeback(uploadedFeedback),"incorrectly set feedback, ivalid value");
         
         //upload the guess in the array of moves
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 //require round started
                 require(masterMind[i].gameStatus == status.ROUND_PLAYING_WAITINGFORMASTER ,"round not started");
+
+                //uncheck the afk flag 
+                actOnAfkFlag(matchID,false);//true is set, false is unset
+
+                //checkFeeback
+                require(checkFeeback(uploadedFeedback),"incorrectly set feedback, ivalid value");
 
                 //if n. of round reached end the game
                 if(masterMind[i].movesHistory.length < nGuesses){ //nGuesses reached REMEMBER AT THE END OF A ROUND IF NO COMPLAIN IS RAISED YOU NEED TO EMPTY THE HISTORY OF THIS WONT WORK
@@ -295,7 +298,7 @@ contract game {
         revert("Game not found: no active game for this ID");
     }
 
-    function move_is_equal(Move memory m1 ,Move memory m2) public pure returns(bool){
+    function move_is_equal(Move memory m1 ,Move memory m2) private pure returns(bool){
         if(m1.pos1 == m2.pos1 && m1.pos2 == m2.pos2 && m1.pos3 == m2.pos3 && m1.pos4 == m2.pos4){
             return true;
         }else{
@@ -304,12 +307,12 @@ contract game {
     }
 
     function checkWinner(uint matchID) public payable{//ASK IS THIS OKAY TO BE PUBLIC, NO CHOISE?
-        actOnAfkFlag(matchID,false);//true is set, false is unset
         //i assume that i already checked and updated the scores
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 //in order to determine the winner i must first check that the round is over
                 require(masterMind[i].gameStatus == status.GAME_END ,"game not finished");
+                actOnAfkFlag(matchID,false);//true is set, false is unset
 
                 require(address(this).balance >= masterMind[i].currentStake, "Insufficient balance in contract");
 
@@ -374,12 +377,11 @@ contract game {
     }
 
     function uploadSolution(uint matchID, Move memory solution) public payable onlyCodeMaker(matchID){
-        actOnAfkFlag(matchID,false);//true is set, false is unset were doing something...
-
-        require(checkinput(solution),"the solution is impossible");
+        
 
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
+                require(checkinput(solution),"the solution is impossible");
                 if((masterMind[i].hashOfSolution) == hashNumbers(solution.pos1,solution.pos2,solution.pos3,solution.pos4)){
                     //solution matches
 
@@ -389,7 +391,10 @@ contract game {
                     move_is_equal(getLatestItem(masterMind[i].movesHistory), solution) ||
                     masterMind[i].gameStatus == status.ROUND_END 
                     , "you can't upload the solution yet");
-                    
+                    actOnAfkFlag(matchID,false);//true is set, false is unset were doing something...
+
+
+
                     //is this necessary for AFK? maybe not
                     //masterMind[i].last_activity = block.timestamp; //global variable representing the current timestamp of the block being mined
                     masterMind[i].holdOffTimestamp = block.timestamp + waitUntil;//THIS IS FOR DISPUTE CHECK
@@ -411,6 +416,7 @@ contract game {
 
                     //solution dosen't match PUNISH CODEMAKER
                     masterMind[i].gameStatus = status.GAME_END;
+                    actOnAfkFlag(matchID,false);//true is set, false is unset were doing something...
 
                     // Ensure the contract has enough balance to make the transfer
                     require(address(this).balance >= masterMind[i].currentStake, "Insufficient balance in contract");
@@ -489,13 +495,13 @@ contract game {
 
 
     function dispute(uint matchID) public payable onlyCodeBreaker(matchID){
-        actOnAfkFlag(matchID,false);//true is set, false is unset
 
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 //check that ROUND_END
                 require(masterMind[i].gameStatus == status.ROUND_END || masterMind[i].gameStatus == status.GAME_END,"round is not over");
                 require(masterMind[i].holdOffTimestamp > block.timestamp,"request is too late, dispute refuted");
+                actOnAfkFlag(matchID,false);//true is set, false is unset
 
                 //check cheating-> true: no cheater , false: cheater
                 if(!verifyFeedback(masterMind[i].movesHistory, masterMind[i].feedbackHistory, masterMind[i].mmSolution))
@@ -554,12 +560,13 @@ contract game {
     //DO I NEED THIS? HOW ELSE? 
     function no_dispute(uint matchID) public{
         //swap the roles
-        actOnAfkFlag(matchID,false);//true is set, false is unset
 
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 //check that ROUND_END
                 require(masterMind[i].gameStatus == status.ROUND_END,"round is not over");
+                actOnAfkFlag(matchID,false);//true is set, false is unset
+
                 if(masterMind[i].cMaster == 0){//NEED THIS 
                     masterMind[i].cMaster = 1;
                 }else{
