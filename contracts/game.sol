@@ -32,24 +32,25 @@ contract game {
         Move mmSolution;
         uint cMaster; //who is currently the codemaster? 0 creator 1 challenger, or maybe bool is safer 
         bool afk_CHECK; //true = set false =unset
-        uint256 afkTimestamp; //to keep track of the maximum ammount of time a player can be afk
+        uint256 block_afkTimestamp; //to keep track of the maximum ammount of time a player can be afk
         Move[] movesHistory;
         Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
         uint n_of_rounds;        
         uint points_cr; //poins counter, all slots in storage are implicitly zero until set to something else.
         uint points_ch;
-        uint256 holdOffTimestamp; //time to start dispute
+        uint256 block_holdOffTimestamp; //time to start dispute
         status gameStatus;
     }
 
     Game[] public masterMind;
 
     //statically defined "config" parameters
-    uint private nTurns = 3; //shouldn't 4 be more fair?
-    uint private nGuesses = 12;
-    uint private extraPoints = 6;
-    uint256 private waitUntil = 90; //holdoff time to give challenger time to dispute
-    uint256 private afk_max = 180; //max afk time
+    uint private constant nTurns = 3; //shouldn't 4 be more fair?
+    uint private constant nGuesses = 12;
+    uint private constant extraPoints = 6;
+    uint256 private constant waitUntil = 90; //holdoff time to give challenger time to dispute
+    uint256 private constant afk_max = 180; //max afk time
+    uint256 private constant AVERAGE_BLOCK_TIME = 12; // Average block time in seconds (for ETH is 12s)
 
     event Failure(string stringFailure);
     event DepositHashSolution(address indexed _from, bytes32  _hashToStore, uint indexed _idOfMatch);
@@ -60,10 +61,15 @@ contract game {
     event PunishmentDispensed(address indexed _from, string _reason, uint indexed _idOfMatch);
     event RewardDispensed(address indexed _from, uint _pointsCr, uint _pointsCh, uint _reward, uint indexed _idOfMatch);
     event EndOfMatch(address indexed _from, uint _pointsCr, uint _pointsCh, uint indexed _idOfMatch);
-    event AFKCheckStarted(address indexed _from, uint256 indexed afkTimestamp, uint indexed _idOfMatch);
+    event AFKCheckStarted(address indexed _from, uint256 indexed _afkTimestamp, uint indexed _idOfMatch);
     event StartOfNewRound(address indexed _from, uint indexed _idOfMatch);
 
     constructor() {}
+
+    
+
+
+
 
     //lookup game based on id
     function findgame(uint findthisID) private view returns (Game memory){//can you return structs, yes i checked
@@ -112,6 +118,36 @@ contract game {
         _;
     }
 
+    function you_are_codebreaker(uint matchID) private view returns (bool){
+     //given match ID i need to figure out who is the codebreaker
+    Game memory currentGame = findgame(matchID);
+        if(
+            ((currentGame.cMaster == 1) && (currentGame.creator == msg.sender)) 
+            ||
+            ((currentGame.cMaster == 0) && (currentGame.challenger == msg.sender))
+        )//error message
+        {
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    function you_are_codemaster(uint matchID) private view returns (bool){
+     //given match ID i need to figure out who is the codebreaker
+    Game memory currentGame = findgame(matchID);
+        if(
+            ((currentGame.cMaster == 0) && (currentGame.creator == msg.sender)) 
+            ||
+            ((currentGame.cMaster == 1) && (currentGame.challenger == msg.sender))
+        )//error message
+        {
+            return true;
+        }else{
+            return false;
+        }
+    }
+
   // Function to get the latest item in the array
     function getLatestItem(Move[] memory listofmoves) public pure returns (Move memory) {
         require(listofmoves.length > 0, "Array is empty");
@@ -120,14 +156,27 @@ contract game {
 
 
     //code maker is checked, the hash uploaded
-    function uploadCodeHash(uint matchID, bytes32 uploadedHash) public onlyCodeMaker(matchID){
+    function uploadCodeHash(uint matchID, bytes32 uploadedHash) public {//remove modifier and add discrimination inside
         //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is called it means that no dipute is necessary
         //maybe some checks on the hash? 
         //if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
+
                 require(masterMind[i].gameStatus == status.ROUND_END || masterMind[i].gameStatus == status.GAME_START
                 ,"previous round has not ended, game has not yet started");
+
+                if(masterMind[i].gameStatus == status.ROUND_END && you_are_codebreaker(matchID)){
+                    //invert the roles
+                    if(masterMind[i].cMaster == 0){
+                        masterMind[i].cMaster = 1;
+                    }else{
+                        masterMind[i].cMaster = 0;
+                    } 
+                }
+                //check that you are the code MASTER (now)
+                require(you_are_codemaster(matchID),"you are not the codemaster");
+
                 actOnAfkFlag(matchID,false);//true is set, false is unset
                 //reset history and round data
                 delete masterMind[i].movesHistory;
@@ -344,7 +393,7 @@ contract game {
 
                     }
 
-                } else if (block.timestamp >= masterMind[i].holdOffTimestamp) {
+                } else if (block.timestamp >= masterMind[i].block_holdOffTimestamp) {
 
                     // Perform the operation if the current time is past the waitUntil time
                     if(masterMind[i].points_cr > masterMind[i].points_ch)
@@ -395,9 +444,8 @@ contract game {
 
 
 
-                    //is this necessary for AFK? maybe not
-                    //masterMind[i].last_activity = block.timestamp; //global variable representing the current timestamp of the block being mined
-                    masterMind[i].holdOffTimestamp = block.timestamp + waitUntil;//THIS IS FOR DISPUTE CHECK
+                    //is this necessary for AFK
+                    masterMind[i].block_holdOffTimestamp = block.number + (waitUntil / AVERAGE_BLOCK_TIME);//THIS IS FOR DISPUTE CHECK
                     masterMind[i].mmSolution = solution; //THIS ALSO, for reference and cheating checking
 
                     updateGameScore(matchID);
@@ -500,7 +548,7 @@ contract game {
             if (masterMind[i].matchID == matchID) {
                 //check that ROUND_END
                 require(masterMind[i].gameStatus == status.ROUND_END || masterMind[i].gameStatus == status.GAME_END,"round is not over");
-                require(masterMind[i].holdOffTimestamp > block.timestamp,"request is too late, dispute refuted");
+                require(masterMind[i].block_holdOffTimestamp > block.number,"request is too late, dispute refuted");
                 actOnAfkFlag(matchID,false);//true is set, false is unset
 
                 //check cheating-> true: no cheater , false: cheater
@@ -557,25 +605,6 @@ contract game {
     }
 
 
-    //DO I NEED THIS? HOW ELSE? 
-    function no_dispute(uint matchID) public{
-        //swap the roles
-
-        for (uint i = 0; i < masterMind.length; i++) {
-            if (masterMind[i].matchID == matchID) {
-                //check that ROUND_END
-                require(masterMind[i].gameStatus == status.ROUND_END,"round is not over");
-                actOnAfkFlag(matchID,false);//true is set, false is unset
-
-                if(masterMind[i].cMaster == 0){//NEED THIS 
-                    masterMind[i].cMaster = 1;
-                }else{
-                    masterMind[i].cMaster = 0;
-                } 
-                emit StartOfNewRound(msg.sender,matchID);
-            }
-        }
-    }
 
     function can_you_wait(Game memory to_check) private view returns(bool){
         if(
@@ -601,8 +630,8 @@ contract game {
 
                 require(can_you_wait(masterMind[i]) ,"you can't ask for afk check, you are the one that needs to make a move");
                 masterMind[i].afk_CHECK = true; //set flag, all other actions unset it
-                masterMind[i].afkTimestamp = block.timestamp;//timestamp blocco attuale
-                emit AFKCheckStarted(msg.sender,masterMind[i].afkTimestamp,matchID);
+                masterMind[i].block_afkTimestamp = block.number;//number blocco attuale
+                emit AFKCheckStarted(msg.sender,masterMind[i].block_afkTimestamp,matchID);
                 return;
             }
         }
@@ -612,7 +641,7 @@ contract game {
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
                 require(masterMind[i].afk_CHECK == true,"you must first ask for AFK check");
-                require(masterMind[i].afkTimestamp + afk_max < block.timestamp, "too early to call AFK"); 
+                require(masterMind[i].block_afkTimestamp + (afk_max / AVERAGE_BLOCK_TIME) < block.number, "too early to call AFK"); 
 
                 //must punish who is afk...depends on the status!                   
                 if(masterMind[i].gameStatus == status.ROUND_PLAYING_WAITINGFORMASTER){
