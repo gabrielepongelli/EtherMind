@@ -1,3 +1,4 @@
+
 pragma solidity ^0.8.0;
 
 contract game {
@@ -18,7 +19,8 @@ contract game {
 
     }
 
-    enum status {GAME_START,ROUND_PLAYING_WAITINGFORMASTER,ROUND_PLAYING_WAITINGFORBREAKER,ROUND_END,GAME_END}
+    //what is the status of the game? who are we waiting? is the round ended?
+    enum status {GAME_START ,ROUND_PLAYING_WAITINGFORMASTER ,ROUND_PLAYING_WAITINGFORBREAKER ,ROUND_END ,GAME_END}
 
     //array of structs for the whole game (ID,players,ecc)
     struct Game {
@@ -28,28 +30,26 @@ contract game {
         uint currentStake; //money proposed for the game stake
         bytes32 hashOfSolution; //uploaded hash
         Move mmSolution;
-        uint cMaster; //who is currently the codemaster? 0 creator 1 challenger, or maybe bool is safer OR ENUM?
+        uint cMaster; //who is currently the codemaster? 0 creator 1 challenger, or maybe bool is safer 
         bool afk_CHECK; //true = set false =unset
-        uint256 afkTimestamp;
+        uint256 afkTimestamp; //to keep track of the maximum ammount of time a player can be afk
         Move[] movesHistory;
         Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
         uint n_of_rounds;        
         uint points_cr; //poins counter, all slots in storage are implicitly zero until set to something else.
         uint points_ch;
-        uint256 holdOffTimestamp;//time to start dispute
+        uint256 holdOffTimestamp; //time to start dispute
         status gameStatus;
-        //status?
-        //to fill
     }
 
     Game[] public masterMind;
 
     //statically defined "config" parameters
-    uint private nTurns = 3; 
+    uint private nTurns = 3; //shouldn't 4 be more fair?
     uint private nGuesses = 12;
     uint private extraPoints = 6;
     uint256 private waitUntil = 90; //holdoff time to give challenger time to dispute
-    uint256 private afk_max = 180;
+    uint256 private afk_max = 180; //max afk time
 
     event Failure(string stringFailure);
     event DepositHashSolution(address indexed _from, bytes32  _hashToStore, uint indexed _idOfMatch);
@@ -113,7 +113,7 @@ contract game {
     }
 
   // Function to get the latest item in the array
-    function getLatestItem(Move[] memory listofmoves) public view returns (Move memory) {
+    function getLatestItem(Move[] memory listofmoves) public pure returns (Move memory) {
         require(listofmoves.length > 0, "Array is empty");
         return listofmoves[listofmoves.length - 1];
     }
@@ -121,12 +121,9 @@ contract game {
 
     //code maker is checked, the hash uploaded
     function uploadCodeHash(uint matchID, bytes32 uploadedHash) public onlyCodeMaker(matchID){
-
-        //TO DO make some mechanism that checks if roles are initialized and if they are to swap them when rounds end
-        //done in another function
-        //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is alled it means that no dipute is necessary
-        //i put it in sameGameHash, match id search already done there
-        //maybe some checks on the hash? ID
+        actOnAfkFlag(matchID,false);//true is set, false is unset
+        //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is called it means that no dipute is necessary
+        //maybe some checks on the hash? 
         //if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
         for (uint i = 0; i < masterMind.length; i++) {
             if (masterMind[i].matchID == matchID) {
@@ -174,10 +171,11 @@ contract game {
 
     function hashNumbers(uint num1, uint num2, uint num3, uint num4) private pure returns (bytes32) {
         // Ensure the numbers are single digits
-        require(num1 < 10 && num2 < 10 && num3 < 10 && num4 < 10, "Each number must be a valid choise (1-6)");
+        require(num1 < 7 && num2 < 7 && num3 < 7 && num4 < 7 && num1 > 0 && num2 > 0 && num3 > 0 && num4 > 0
+        , "Each number must be a valid choise (1-6)");
         // Concatenate the numbers by shifting their positions
         uint concatenatedNumber = (num1 * 1000) + (num2 * 100) + (num3 * 10) + num4;
-        // Hash the concatenated result using keccak256
+        // Hash the concatenated result using sha
         bytes32 hash = sha256(abi.encodePacked(concatenatedNumber));
         return hash;
     }
@@ -248,11 +246,16 @@ contract game {
                         revert("internal error");
                     }
 
-                }else if(masterMind[i].movesHistory.length == nGuesses){//last chance to get it right (no feedback necessary)
+                }else if(masterMind[i].movesHistory.length == nGuesses){//last chance to get it right 
+                     if (masterMind[i].movesHistory.length > masterMind[i].feedbackHistory.length){
+
+                        masterMind[i].feedbackHistory.push(uploadedFeedback); 
+                        //breaker has run out of guesses,ROUND ENDS now is time for the solution
+                        masterMind[i].gameStatus = status.ROUND_END;
+                        emit EndOfGuesses(msg.sender,matchID);
+
+                    }
                     
-                    //breaker has run out of guesses,ROUND ENDS now is time for the solution
-                    masterMind[i].gameStatus = status.ROUND_END;
-                    emit EndOfGuesses(msg.sender,matchID);
                 }else{
 
                     revert("internal error");
@@ -300,7 +303,7 @@ contract game {
         }
     }
 
-    function checkWinner(uint matchID) public payable{//ASK IS THIS OKAY TO BE PUBLIC?
+    function checkWinner(uint matchID) public payable{//ASK IS THIS OKAY TO BE PUBLIC, NO CHOISE?
         actOnAfkFlag(matchID,false);//true is set, false is unset
         //i assume that i already checked and updated the scores
         for (uint i = 0; i < masterMind.length; i++) {
@@ -548,7 +551,7 @@ contract game {
     }
 
 
-    //DO I NEED THIS? HOW ELSE?
+    //DO I NEED THIS? HOW ELSE? 
     function no_dispute(uint matchID) public{
         //swap the roles
         actOnAfkFlag(matchID,false);//true is set, false is unset
@@ -557,7 +560,7 @@ contract game {
             if (masterMind[i].matchID == matchID) {
                 //check that ROUND_END
                 require(masterMind[i].gameStatus == status.ROUND_END,"round is not over");
-                if(masterMind[i].cMaster == 0){
+                if(masterMind[i].cMaster == 0){//NEED THIS 
                     masterMind[i].cMaster = 1;
                 }else{
                     masterMind[i].cMaster = 0;
