@@ -1,30 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { ContractTransactionResponse, Result, Interface, AddressLike } from "ethers";
-
-const getEvent = async function (tx: ContractTransactionResponse, eventInterface: Interface, eventName: string, eventIdx: number = 0): Promise<Result | undefined> {
-    const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-    const data = receipt?.logs[eventIdx].data;
-    const topics = receipt?.logs[eventIdx].topics;
-
-    if (data) {
-        return eventInterface.decodeEventLog(eventName, data, topics);
-    } else {
-        return undefined;
-    }
-}
-
-const getMatchFromEvent = async function (tx: ContractTransactionResponse): Promise<AddressLike | undefined> {
-    const eventInterface = new ethers.Interface(["event MatchCreated(address creator, address id)"]);
-    const event = await getEvent(tx, eventInterface, "MatchCreated", 0);
-
-    if (event) {
-        return event.id;
-    } else {
-        return undefined;
-    }
-}
+import { getEvent, getMatchFromEvent } from "./utils";
 
 describe("Matchmaking", function () {
     async function deployGame() {
