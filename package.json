@@ -1,5 +1,5 @@
 {
-  "name": "ethermind",
+  "name": "ehtermind",
   "version": "1.0.0",
   "description": "Mastermind game implemented over the Ethereum blockchain",
   "main": "index.js",
@@ -18,5 +18,8 @@
     "hardhat-gas-reporter": "^2.2.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
+  },
+  "directories": {
+    "test": "test"
   }
 }
