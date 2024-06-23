@@ -101,8 +101,7 @@ contract EtherMind {
         //given match ID i need to figure out who is the code maker
         Game.State memory game = MatchRegister.getMatch(matches, id);
         require(
-            ((game.codeMaster == 0) && (game.creator == msg.sender)) ||
-                ((game.codeMaster == 1) && (game.challenger == msg.sender)),
+            Game.isCodeMaker(game, msg.sender),
             "Caller is not the codemaker"
         );
         _;
@@ -113,9 +112,16 @@ contract EtherMind {
         //given match ID i need to figure out who is the codebreaker
         Game.State memory game = MatchRegister.getMatch(matches, id);
         require(
-            ((game.codeMaster == 1) && (game.creator == msg.sender)) ||
-                ((game.codeMaster == 0) && (game.challenger == msg.sender)),
+            Game.isCodeBreaker(game, msg.sender),
             "Caller is not the codebreaker"
+        );
+        _;
+    }
+
+    modifier onlyMe() {
+        require(
+            msg.sender == address(this),
+            "You are not allowed to call this function"
         );
         _;
     }
@@ -132,10 +138,10 @@ contract EtherMind {
     event GameStarted(address id);
     event Failure(string stringFailure);
     event DepositHashSolution(address id, address from, bytes32 solution);
-    event DepositGuess(address id, address from, Game.Code guess);
+    event DepositGuess(address id, address from, Codes.Code guess);
     event DepositFeedback(address id, address from, Game.Feedback feedback);
     event EndOfGuesses(address id, address from);
-    event EndOfRound(address id, address from, Game.Code solution);
+    event EndOfRound(address id, address from, Codes.Code solution);
     event PunishmentDispensed(address id, address from, string reason);
     event RewardDispensed(
         address id,
@@ -304,8 +310,16 @@ contract EtherMind {
     }
 
     //code maker is checked, the hash uploaded
-    function uploadCodeHash(address id, bytes32 uploadedHash) external {
-        Game.State memory game = MatchRegister.getMatch(matches, id);
+    function uploadCodeHash(
+        address id,
+        bytes32 uploadedHash
+    )
+        external
+        onlyExistingIds(id)
+        onlyStartedMatches(id)
+        onlyAllowedPlayers(id)
+    {
+        Game.State storage game = MatchRegister.getMatch(matches, id);
 
         //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is called it means that no dipute is necessary
         //maybe some checks on the hash?
@@ -321,36 +335,25 @@ contract EtherMind {
             game.phase == Game.Phase.ROUND_END &&
             Game.isCodeBreaker(game, msg.sender)
         ) {
-            //invert the roles
-            if (game.codeMaster == 0) {
-                game.codeMaster = 1;
-            } else {
-                game.codeMaster = 0;
-            }
+            Game.invertRoles(game);
         }
-        //check that you are the code MAKER (now)
+
+        // check that the caller is the code maker NOW
         require(
             Game.isCodeMaker(game, msg.sender),
-            "you are not the codemaster"
+            "you are not the codemaker"
         );
 
         Game.actOnAfkFlag(game, false); //true is set, false is unset
 
-        //reset history and round data
-        delete game.movesHistory;
-        delete game.feedbackHistory;
-        delete game.solution;
-
-        //new game status
-        game.phase = Game.Phase.ROUND_PLAYING_WAITINGFORBREAKER;
-        game.hashedSolution = uploadedHash;
+        Game.startNewRound(game, uploadedHash);
         emit DepositHashSolution(id, msg.sender, uploadedHash);
     }
 
     function makeGuess(
         address id,
-        Game.Code memory guess
-    ) public onlyCodeBreaker(id) {
+        Codes.Code guess
+    ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeBreaker(id) {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
         //require round started
@@ -368,28 +371,17 @@ contract EtherMind {
             "incorrectly set guess, ivalid colors"
         );
 
-        //must check that i didn't already made a guess that is waiting for an answer (not needed anymore technically but ill'keep it anyway)
-        if (game.movesHistory.length == game.feedbackHistory.length) {
-            game.movesHistory.push(guess);
-            game.phase = Game.Phase.ROUND_PLAYING_WAITINGFORMASTER;
-            emit DepositGuess(id, msg.sender, guess);
-        } else if (game.movesHistory.length > game.feedbackHistory.length) {
-            //must wait, feedback not yet returned
-            revert("error, must wait feedback not yet returned"); //non sono sicuro se qui il revert vada bene come error handling
-        } else {
-            revert("internal error");
-        }
+        Game.submitGuess(game, guess);
+        emit DepositGuess(id, msg.sender, guess);
     }
 
     //save feedback
     function giveFeedback(
         address id,
-        Game.Feedback memory feedback
-    ) public onlyCodeMaker(id) {
+        Game.Feedback calldata feedback
+    ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeMaker(id) {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        //upload the guess in the array of moves
-        //require round started
         require(
             game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORMASTER,
             "round not started"
@@ -398,42 +390,26 @@ contract EtherMind {
         //uncheck the afk flag
         Game.actOnAfkFlag(game, false); //true is set, false is unset
 
-        //checkFeedbackFromat
-        require(
-            Game.checkFeedbackFromat(feedback),
-            "incorrectly set feedback, ivalid value"
-        );
+        require(Game.checkFeedbackFromat(feedback), "invalid feedback format");
 
-        //if n. of round reached end the game
-        if (game.movesHistory.length < Configs.nGuesses) {
-            //nGuesses reached REMEMBER AT THE END OF A ROUND IF NO COMPLAIN IS RAISED YOU NEED TO EMPTY THE HISTORY OF THIS WONT WORK
+        Game.submitFeedback(game, feedback);
 
-            if (game.movesHistory.length > game.feedbackHistory.length) {
-                game.feedbackHistory.push(feedback);
-                game.phase = Game.Phase.ROUND_PLAYING_WAITINGFORBREAKER;
-                emit DepositFeedback(id, msg.sender, feedback); //meit given feedback
-            } else if (
-                game.movesHistory.length == game.feedbackHistory.length
-            ) {
-                //must wait, guess not yet given
-                revert("error, must wait guess not yet made"); //non sono sicuro se qui il revert vada bene come error handling
-            } else {
-                revert("internal error");
-            }
-        } else if (game.movesHistory.length == Configs.nGuesses) {
-            //last chance to get it right
-            if (game.movesHistory.length > game.feedbackHistory.length) {
-                game.feedbackHistory.push(feedback);
-                //breaker has run out of guesses,ROUND ENDS now is time for the solution
-                game.phase = Game.Phase.ROUND_END;
-                emit EndOfGuesses(id, msg.sender);
-            }
+        if (Game.isRoundEnded(game)) {
+            emit EndOfGuesses(id, msg.sender);
         } else {
-            revert("internal error");
+            emit DepositFeedback(id, msg.sender, feedback);
         }
     }
 
-    function checkWinner(address id) external payable {
+    function checkWinner(
+        address id
+    )
+        external
+        payable
+        onlyExistingIds(id)
+        onlyStartedMatches(id)
+        onlyAllowedPlayers(id)
+    {
         Game.State memory game = MatchRegister.getMatch(matches, id);
 
         //i assume that i already checked and updated the scores
@@ -443,133 +419,91 @@ contract EtherMind {
         Game.actOnAfkFlag(game, false); //true is set, false is unset
 
         require(
-            address(this).balance >= game.stake,
+            address(this).balance >= game.stake * 2,
             "Insufficient balance in contract"
         );
 
         //if this is called by the codemaker force him to wait otherwise do it immidiately
         if (
-            (msg.sender == game.creator && game.codeMaster == 1) ||
-            (msg.sender == game.challenger && game.codeMaster == 0)
+            Game.isCodeBreaker(game, msg.sender) ||
+            block.number >= game.holdOffBlockTimestamp
         ) {
-            // Perform the operation immediately
-            if (game.creatorScore > game.challengerScore) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit RewardDispensed(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore,
-                    game.stake
-                );
-            } else if (game.creatorScore < game.challengerScore) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit RewardDispensed(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore,
-                    game.stake
-                );
+            address payable winner = payable(Game.getWinner(game));
+
+            if (winner != address(0)) {
+                // transfer the amount to the winner
+                winner.transfer(game.stake * 2);
             } else {
-                //its a draw
-                uint halfreward = game.stake / 2; //solidity will truncate automatically
-                (bool success, ) = game.challenger.call{value: halfreward}("");
-                require(success, "Transfer failed.");
-                (success, ) = game.creator.call{value: halfreward}("");
-                require(success, "Transfer failed.");
-                emit RewardDispensed(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore,
-                    game.stake
-                );
-            }
-        } else if (block.timestamp >= game.holdOffBlockTimestamp) {
-            // Perform the operation if the current time is past the waitUntil time
-            if (game.creatorScore > game.challengerScore) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit RewardDispensed(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore,
-                    game.stake
-                );
-            } else if (game.creatorScore < game.challengerScore) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit RewardDispensed(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore,
-                    game.stake
-                );
-            } else {
-                //its a draw
-                uint halfreward = game.stake / 2; //solidity will truncate automatically
-                (bool success, ) = game.challenger.call{value: halfreward}("");
-                require(success, "Transfer failed.");
-                (success, ) = game.creator.call{value: halfreward}("");
-                require(success, "Transfer failed.");
-                emit RewardDispensed(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore,
-                    game.stake
-                );
+                // it's a draw
+                game.creator.transfer(game.stake);
+                game.challenger.transfer(game.stake);
             }
         } else {
-            // Inform the codemaster to wait until the waitUntil time
             revert("Operation performed only after wait time.");
         }
+
+        emit RewardDispensed(
+            id,
+            msg.sender,
+            game.creatorScore,
+            game.challengerScore,
+            game.stake
+        );
+    }
+
+    function punish(
+        address id,
+        bool codeMaker,
+        string memory eventMsg
+    ) internal onlyMe {
+        Game.State memory game = MatchRegister.getMatch(matches, id);
+
+        // ensure the contract has enough balance to make the transfer
+        require(
+            address(this).balance >= game.stake * 2,
+            "Insufficient balance in contract"
+        );
+
+        address payable playerToPay = payable(
+            codeMaker ? Game.getCodeBreaker(game) : Game.getCodeMaker(game)
+        );
+
+        playerToPay.transfer(game.stake * 2);
+        emit PunishmentDispensed(id, msg.sender, eventMsg);
     }
 
     function uploadSolution(
         address id,
-        Game.Code memory solution
-    ) external payable onlyCodeMaker(id) {
+        Codes.Code solution
+    )
+        external
+        payable
+        onlyExistingIds(id)
+        onlyStartedMatches(id)
+        onlyCodeMaker(id)
+    {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        require(Game.checkCodeFromat(solution), "the solution is impossible");
+        require(
+            game.phase == Game.Phase.ROUND_END,
+            "you can't upload the solution yet"
+        );
+
+        require(Game.checkCodeFromat(solution), "wrong solution format");
 
         if (game.hashedSolution == Game.hashCode(solution)) {
-            //solution matches
-
-            require(game.movesHistory.length > 0, "Array is empty");
-
-            //can upload the solution only if the round is ended OR player got it right
-            require(
-                Game.equals(
-                    game.movesHistory[game.movesHistory.length - 1],
-                    solution
-                ) || game.phase == Game.Phase.ROUND_END,
-                "you can't upload the solution yet"
-            );
+            // solution hashes match
 
             Game.actOnAfkFlag(game, false); //true is set, false is unset were doing something...
 
-            //is this necessary for AFK? maybe not
-            //game.last_activity = block.timestamp; //global variable representing the current timestamp of the block being mined
             game.holdOffBlockTimestamp =
                 block.number +
-                (Configs.waitUntil / Configs.avgBlockTime); //THIS IS FOR DISPUTE CHECK
+                (Configs.WAIT_UNTIL / Configs.AVG_BLOCK_TIME); //THIS IS FOR DISPUTE CHECK
             game.solution = solution; //THIS ALSO, for reference and cheating checking
 
             Game.updateScores(game);
-            //have we reached the limit of rounds?
 
-            if (game.round == Configs.nTurns) {
+            if (Game.isLastRound(game)) {
                 game.phase = Game.Phase.GAME_END;
                 emit EndOfMatch(
                     id,
@@ -578,54 +512,35 @@ contract EtherMind {
                     game.challengerScore
                 );
             } else {
-                //end of round, but not game
+                // end of the round, but not of the game
                 game.round++;
                 game.phase = Game.Phase.ROUND_END;
                 emit EndOfRound(id, msg.sender, solution);
             }
         } else {
-            //solution dosen't match PUNISH CODEMAKER
+            // solution dosen't match -> PUNISH CODEMAKER
             game.phase = Game.Phase.GAME_END;
-
-            // Ensure the contract has enough balance to make the transfer
-            require(
-                address(this).balance >= game.stake,
-                "Insufficient balance in contract"
-            );
-
-            if (game.codeMaster == 0) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}(""); //no gas limit?
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "false code solution provided"
-                );
-            } else if (game.codeMaster == 1) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "false code solution provided"
-                );
-            } else {
-                revert("internal error"); //just to be safe
-            }
+            punish(id, true, "false code solution provided");
         }
     }
 
-    function dispute(address id) external payable onlyCodeBreaker(id) {
+    function dispute(
+        address id
+    )
+        external
+        payable
+        onlyExistingIds(id)
+        onlyStartedMatches(id)
+        onlyCodeBreaker(id)
+    {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        //check that ROUND_END
         require(
             game.phase == Game.Phase.ROUND_END ||
                 game.phase == Game.Phase.GAME_END,
             "round is not over"
         );
+
         require(
             game.holdOffBlockTimestamp > block.number,
             "request is too late, dispute refuted"
@@ -634,163 +549,68 @@ contract EtherMind {
         Game.actOnAfkFlag(game, false); //true is set, false is unset were doing something...
 
         //check cheating-> true: no cheater , false: cheater
-        if (!Game.verifyFeedback(game)) {
-            //cheating detected, punish the codemaker
-            game.phase = Game.Phase.GAME_END;
-
-            // Ensure the contract has enough balance to make the transfer
-            require(
-                address(this).balance >= game.stake,
-                "Insufficient balance in contract"
-            );
-
-            if (game.codeMaster == 0) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}(""); //no gas limit?
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "codemaster cheated, false clues provided"
-                );
-            } else if (game.codeMaster == 1) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "codemaster cheated, false clues provided"
-                );
-            } else {
-                revert("internal error"); //just to be safe
-            }
+        if (Game.verifyFeedback(game)) {
+            punish(id, false, "codebreaker unjustly accused codemaster");
         } else {
-            //if codemaker was unjustly accused, reward him instead
-            game.phase = Game.Phase.GAME_END;
-
-            // Ensure the contract has enough balance to make the transfer
-            require(
-                address(this).balance >= game.stake,
-                "Insufficient balance in contract"
-            );
-
-            if (game.codeMaster == 1) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}(""); //no gas limit?
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "codebreaker unjustly accused codemaster"
-                );
-            } else if (game.codeMaster == 0) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "codebreaker unjustly accused codemaster"
-                );
-            } else {
-                revert("internal error"); //just to be safe
-            }
+            // cheating detected, punish the codemaker
+            punish(id, true, "codemaker cheated, false clues provided");
         }
+
+        game.phase = Game.Phase.GAME_END;
     }
 
-    function startAfkCheck(address id) external {
+    function startAfkCheck(
+        address id
+    )
+        external
+        onlyExistingIds(id)
+        onlyStartedMatches(id)
+        onlyAllowedPlayers(id)
+    {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        //check that whoever is calling is in the position to wait the other
+        // check that whoever is calling is in the position to wait the other
         require(
             Game.canPlayerWait(game, msg.sender),
             "you can't ask for afk check, you are the one that needs to make a move"
         );
+
         game.afkFlag = true; //set flag, all other actions unset it
         game.afkBlockTimestamp = block.number; //number blocco attuale
         emit AFKCheckStarted(id, msg.sender, game.afkBlockTimestamp);
     }
 
-    function stopMatch(address id) external payable {
+    function stopMatch(
+        address id
+    )
+        external
+        payable
+        onlyExistingIds(id)
+        onlyStartedMatches(id)
+        onlyAllowedPlayers(id)
+    {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        require(game.afkFlag == true, "you must first ask for AFK check");
+        require(game.afkFlag, "you must first ask for AFK check");
         require(
-            game.afkBlockTimestamp + (Configs.afkMax / Configs.avgBlockTime) <
+            game.afkBlockTimestamp +
+                (Configs.AFK_MAX / Configs.AVG_BLOCK_TIME) <
                 block.number,
             "too early to call AFK"
         );
 
-        //must punish who is afk...depends on the status!
         if (game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORMASTER) {
-            //end game
-            game.phase = Game.Phase.GAME_END;
-
-            // Ensure the contract has enough balance to make the transfer
-            require(
-                address(this).balance >= game.stake,
-                "Insufficient balance in contract"
-            );
-
-            if (game.codeMaster == 0) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}(""); //no gas limit?
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "punished codemaster, AFK"
-                );
-            } else if (game.codeMaster == 1) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "punished codemaster, AFK"
-                );
-            } else {
-                revert("internal error"); //just to be safe
-            }
+            punish(id, true, "punished codemaker, AFK");
         } else if (
             game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORBREAKER ||
             game.phase == Game.Phase.ROUND_END
         ) {
-            //if the code master offer the solution but cb dosn't do anything...
-            //end game
-            game.phase = Game.Phase.GAME_END;
-
-            // Ensure the contract has enough balance to make the transfer
-            require(
-                address(this).balance >= game.stake,
-                "Insufficient balance in contract"
-            );
-
-            if (game.codeMaster == 1) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.challenger.call{value: game.stake}(""); //no gas limit?
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "punished codebreaker, AFK"
-                );
-            } else if (game.codeMaster == 0) {
-                // Transfer the amount to the recipient
-                (bool success, ) = game.creator.call{value: game.stake}("");
-                require(success, "Transfer failed.");
-                emit PunishmentDispensed(
-                    id,
-                    msg.sender,
-                    "punished codebreaker, AFK"
-                );
-            } else {
-                revert("internal error"); //just to be safe
-            }
+            // if the code maker offer the solution but the codebreaker doesn't do anything
+            punish(id, false, "punished codebreaker, AFK");
         } else {
             revert("erron invalid state (game end)");
         }
+
+        game.phase = Game.Phase.GAME_END;
     }
 }

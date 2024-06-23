@@ -5,10 +5,10 @@ library Configs {
     /**
      * @dev Config parameters.
      */
-    uint internal constant nTurns = 4;
-    uint internal constant nGuesses = 12;
-    uint internal constant extraPoints = 6;
-    uint256 internal constant waitUntil = 90; //holdoff time to give challenger time to dispute
-    uint256 internal constant afkMax = 180; //max afk time
-    uint256 internal constant avgBlockTime = 12; // Average block time in seconds (for ETH is 12s)
+    uint256 internal constant N_TURNS = 4;
+    uint256 internal constant N_GUESSES = 12;
+    uint256 internal constant EXTRA_POINTS = 6;
+    uint256 internal constant WAIT_UNTIL = 90; //holdoff time to give challenger time to dispute
+    uint256 internal constant AFK_MAX = 180; //max afk time
+    uint256 internal constant AVG_BLOCK_TIME = 12; // Average block time in seconds (for ETH is 12s)
 }
