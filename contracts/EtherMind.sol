@@ -139,7 +139,7 @@ contract EtherMind {
     event Failure(string stringFailure);
     event DepositHashSolution(address id, address from, bytes32 solution);
     event DepositGuess(address id, address from, Codes.Code guess);
-    event DepositFeedback(address id, address from, Game.Feedback feedback);
+    event DepositFeedback(address id, address from, Codes.Feedback feedback);
     event EndOfGuesses(address id, address from);
     event EndOfRound(address id, address from, Codes.Code solution);
     event PunishmentDispensed(address id, address from, string reason);
@@ -367,7 +367,7 @@ contract EtherMind {
 
         //checkinput
         require(
-            Game.checkCodeFromat(guess),
+            Codes.checkFromat(guess),
             "incorrectly set guess, ivalid colors"
         );
 
@@ -378,7 +378,7 @@ contract EtherMind {
     //save feedback
     function giveFeedback(
         address id,
-        Game.Feedback calldata feedback
+        Codes.Feedback feedback
     ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeMaker(id) {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
@@ -390,7 +390,7 @@ contract EtherMind {
         //uncheck the afk flag
         Game.actOnAfkFlag(game, false); //true is set, false is unset
 
-        require(Game.checkFeedbackFromat(feedback), "invalid feedback format");
+        require(Codes.checkFromat(feedback), "invalid feedback format");
 
         Game.submitFeedback(game, feedback);
 
@@ -489,9 +489,9 @@ contract EtherMind {
             "you can't upload the solution yet"
         );
 
-        require(Game.checkCodeFromat(solution), "wrong solution format");
+        require(Codes.checkFromat(solution), "wrong solution format");
 
-        if (game.hashedSolution == Game.hashCode(solution)) {
+        if (game.hashedSolution == Codes.hashCode(solution)) {
             // solution hashes match
 
             Game.actOnAfkFlag(game, false); //true is set, false is unset were doing something...
