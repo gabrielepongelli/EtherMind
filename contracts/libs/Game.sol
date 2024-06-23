@@ -46,13 +46,13 @@ library Game {
         Code solution;
         uint codeMaster; //who is currently the codemaster? 0 creator 1 challenger, or maybe bool is safer
         bool afkFlag; //true = set false =unset
-        uint256 afkTimestamp; //to keep track of the maximum ammount of time a player can be afk
+        uint256 afkBlockTimestamp; //to keep track of the maximum ammount of time a player can be afk
         Code[] movesHistory;
         Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
         uint round;
         uint creatorScore; //poins counter, all slots in storage are implicitly zero until set to something else.
         uint challengerScore;
-        uint256 holdOffTimestamp; //time to start dispute
+        uint256 holdOffBlockTimestamp; //time to start dispute
     }
 
     /**
@@ -304,5 +304,25 @@ library Game {
             (game.phase == Phase.ROUND_PLAYING_WAITINGFORMASTER &&
                 ((game.codeMaster == 1 && game.creator == player) ||
                     (game.codeMaster == 0 && game.challenger == player)));
+    }
+
+    function isCodeBreaker(
+        State memory game,
+        address player
+    ) internal pure returns (bool) {
+        //given match ID i need to figure out who is the codebreaker
+        return
+            ((game.codeMaster == 1) && (game.creator == player)) ||
+            ((game.codeMaster == 0) && (game.challenger == player));
+    }
+
+    function isCodeMaker(
+        State memory game,
+        address player
+    ) internal pure returns (bool) {
+        //given match ID i need to figure out who is the codebreaker
+        return
+            ((game.codeMaster == 0) && (game.creator == player)) ||
+            ((game.codeMaster == 1) && (game.challenger == player));
     }
 }

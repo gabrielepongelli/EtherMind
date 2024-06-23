@@ -10,4 +10,5 @@ library Configs {
     uint internal constant extraPoints = 6;
     uint256 internal constant waitUntil = 90; //holdoff time to give challenger time to dispute
     uint256 internal constant afkMax = 180; //max afk time
+    uint256 internal constant avgBlockTime = 12; // Average block time in seconds (for ETH is 12s)
 }
