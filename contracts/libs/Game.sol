@@ -4,22 +4,9 @@ pragma solidity ^0.8.24;
 import "./Configs.sol";
 import "./Code.sol";
 import "./Flags.sol";
+import "./GamePhase.sol";
 
 library Game {
-    /**
-     * Phases in which a game can be.
-     */
-    enum Phase {
-        NOT_CREATED, // The game has not been created yet
-        STAKE_DECISION, // The players need to decide the stake value
-        STAKE_PAYMENT, // The players need to pay the stake
-        GAME_STARTED, // The game is actually started
-        ROUND_PLAYING_WAITINGFORMASTER,
-        ROUND_PLAYING_WAITINGFORBREAKER,
-        ROUND_END,
-        GAME_END
-    }
-
     /**
      * Internal state of a game.
      */
@@ -28,7 +15,7 @@ library Game {
         address payable challenger; // Player who joined the match
         uint256 stake; // Money proposed for the game stake (in wei)
         Flags flags; // Array of flags
-        Phase phase; // Phase in which the game currently is in.
+        Phase phase; // Phase in which the game is currently in.
         bytes32 hashedSolution; //uploaded hash
         Codes.Code solution;
         uint256 afkBlockTimestamp; //to keep track of the maximum ammount of time a player can be afk
@@ -56,7 +43,7 @@ library Game {
         self.creator = payable(creator);
         self.challenger = payable(challenger);
         self.stake = 0;
-        self.phase = Game.Phase.NOT_CREATED;
+        self.phase = NOT_CREATED;
         self.flags = isPublic ? self.flags : self.flags + ACCESSIBILITY;
     }
 
@@ -107,7 +94,7 @@ library Game {
             ? self.flags + CREATOR_PAYED
             : self.flags + CHALLENGER_PAYED;
 
-        return self.flags == CREATOR_PAYED & CHALLENGER_PAYED;
+        return self.flags == CREATOR_PAYED | CHALLENGER_PAYED;
     }
 
     /**
@@ -175,19 +162,6 @@ library Game {
         return true;
     }
 
-    function canPlayerWait(
-        State memory self,
-        address player
-    ) internal pure returns (bool) {
-        return
-            (self.phase == Phase.ROUND_PLAYING_WAITINGFORBREAKER &&
-                ((self.flags != WHOIS && self.creator == player) ||
-                    (self.flags == WHOIS && self.challenger == player))) ||
-            (self.phase == Phase.ROUND_PLAYING_WAITINGFORMASTER &&
-                ((self.flags == WHOIS && self.creator == player) ||
-                    (self.flags != WHOIS && self.challenger == player)));
-    }
-
     function isCodeBreaker(
         State memory self,
         address player
@@ -206,7 +180,6 @@ library Game {
         State memory self,
         address player
     ) internal pure returns (bool) {
-        //given match ID i need to figure out who is the codebreaker
         return
             (self.flags != WHOIS && (self.creator == player)) ||
             (self.flags == WHOIS && (self.challenger == player));
@@ -222,6 +195,15 @@ library Game {
             : self.flags + WHOIS;
     }
 
+    function canPlayerWait(
+        State memory self,
+        address player
+    ) internal pure returns (bool) {
+        return
+            (isCodeMaker(self, player) && self.flags == CB_WAITING) ||
+            (isCodeBreaker(self, player) && self.flags == CM_WAITING);
+    }
+
     function startNewRound(
         State storage self,
         bytes32 hashedSolution
@@ -232,13 +214,14 @@ library Game {
         self.solution = Codes.newCode(0, 0, 0, 0);
 
         // new game status
-        self.phase = Game.Phase.ROUND_PLAYING_WAITINGFORBREAKER;
+        self.phase = ROUND_PLAYING;
+        self.flags = self.flags + CB_WAITING;
         self.hashedSolution = hashedSolution;
     }
 
     function submitGuess(State storage self, Codes.Code guess) internal {
         self.movesHistory.push(guess);
-        self.phase = Game.Phase.ROUND_PLAYING_WAITINGFORMASTER;
+        self.flags = (self.flags - CB_WAITING) + CM_WAITING;
     }
 
     function roundEndReached(State memory self) internal pure returns (bool) {
@@ -252,7 +235,7 @@ library Game {
     }
 
     function isRoundEnded(State memory self) internal pure returns (bool) {
-        return self.phase == Phase.ROUND_END;
+        return self.phase == ROUND_END;
     }
 
     function submitFeedback(
@@ -260,9 +243,8 @@ library Game {
         Codes.Feedback feedback
     ) internal {
         self.feedbackHistory.push(feedback);
-        self.phase = roundEndReached(self)
-            ? Game.Phase.ROUND_END
-            : Game.Phase.ROUND_PLAYING_WAITINGFORMASTER;
+        self.flags = self.flags - CM_WAITING;
+        self.phase = roundEndReached(self) ? ROUND_END : ROUND_PLAYING;
     }
 
     function getWinner(State memory self) internal pure returns (address) {

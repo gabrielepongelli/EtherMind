@@ -4,20 +4,10 @@ pragma solidity ^0.8.24;
 import "./Game.sol";
 
 /**
- * States in which a match can be.
- */
-enum MatchState {
-    DO_NOT_EXIST, // A match that has not been created
-    PENDING, // A pending match
-    STARTED // A match that is already started
-}
-
-/**
  * Record representing a match.
  */
 struct MatchRecord {
     Game.State game; // Game data
-    MatchState state; // State of the match
     uint pos; // Position in the array of pending matches incremented by 1. The value of 0 represent an invalid position in the array.
 }
 
@@ -49,7 +39,7 @@ library MatchRegister {
             return false;
         }
 
-        if (self.existingMatches[id].state != MatchState.DO_NOT_EXIST) {
+        if (self.existingMatches[id].game.phase != NOT_CREATED) {
             return false;
         }
 
@@ -61,7 +51,7 @@ library MatchRegister {
         }
 
         MatchRecord storage rec = self.existingMatches[id];
-        rec.state = MatchState.PENDING;
+        rec.game.phase = PENDING;
         rec.pos = pos;
 
         Game.initState(rec.game, creator, challenger, isPub);
@@ -95,7 +85,7 @@ library MatchRegister {
             return false;
         }
 
-        return self.existingMatches[id].state != MatchState.DO_NOT_EXIST;
+        return self.existingMatches[id].game.phase != NOT_CREATED;
     }
 
     /**
@@ -110,10 +100,7 @@ library MatchRegister {
         address id
     ) internal returns (bool) {
         MatchRecord storage rec = self.existingMatches[id];
-        if (
-            rec.state == MatchState.STARTED ||
-            rec.state == MatchState.DO_NOT_EXIST
-        ) {
+        if (rec.game.phase != PENDING) {
             return false;
         }
 
@@ -135,7 +122,7 @@ library MatchRegister {
             rec.pos = 0;
         }
 
-        rec.state = MatchState.STARTED;
+        rec.game.phase = STAKE_DECISION;
         return true;
     }
 
@@ -161,7 +148,7 @@ library MatchRegister {
         address id
     ) internal view returns (bool) {
         return
-            self.existingMatches[id].state == MatchState.PENDING &&
+            self.existingMatches[id].game.phase == PENDING &&
             self.existingMatches[id].game.flags == ACCESSIBILITY;
     }
 
@@ -174,7 +161,9 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal view returns (bool) {
-        return self.existingMatches[id].state == MatchState.STARTED;
+        return
+            self.existingMatches[id].game.phase !=
+            (PENDING | NOT_CREATED | GAME_END);
     }
 
     /**
@@ -188,7 +177,7 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal returns (bool) {
-        if (self.existingMatches[id].state != MatchState.STARTED) {
+        if (!isStarted(self, id)) {
             return false;
         }
 

@@ -13,7 +13,7 @@ pragma solidity ^0.8.24;
  * - [b7] CM_WAITING: are we waiting for the codemaker: 0 = no, 1 = yes
  */
 type Flags is uint8;
-using {_combine as &, _isSet as ==, _isNotSet as !=, _set as +, _reset as -} for Flags global;
+using {_combine as |, _isSet as ==, _isNotSet as !=, _set as +, _reset as -} for Flags global;
 
 Flags constant ACCESSIBILITY = Flags.wrap(1);
 Flags constant LAST_STAKE = Flags.wrap(1 << 1);

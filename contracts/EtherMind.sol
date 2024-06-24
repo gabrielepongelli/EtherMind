@@ -88,7 +88,7 @@ contract EtherMind {
      * exist.
      * @param phase The phase in which the game should be.
      */
-    modifier onlyGamesInPhase(address id, Game.Phase phase) {
+    modifier onlyGamesInPhase(address id, Phase phase) {
         require(
             MatchRegister.getMatch(matches, id).phase == phase,
             "Operation not permitted in this phase of the game"
@@ -238,7 +238,7 @@ contract EtherMind {
 
         MatchRegister.setMatchStarted(matches, id);
         game.challenger = payable(msg.sender);
-        game.phase = Game.Phase.STAKE_DECISION;
+        game.phase = STAKE_DECISION;
         emit MatchStarted(id, game.creator, game.challenger);
 
         Game.setNewStake(game, msg.sender, stake);
@@ -261,13 +261,13 @@ contract EtherMind {
         onlyExistingIds(id)
         onlyStartedMatches(id)
         onlyAllowedPlayers(id)
-        onlyGamesInPhase(id, Game.Phase.STAKE_DECISION)
+        onlyGamesInPhase(id, STAKE_DECISION)
     {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
         if (!Game.isSameProposer(game, msg.sender) && game.stake == stake) {
             // stake value decided
-            game.phase = Game.Phase.STAKE_PAYMENT;
+            game.phase = STAKE_PAYMENT;
             emit StakeFixed(id, stake);
         } else {
             Game.setNewStake(game, msg.sender, stake);
@@ -287,7 +287,7 @@ contract EtherMind {
         onlyExistingIds(id)
         onlyStartedMatches(id)
         onlyAllowedPlayers(id)
-        onlyGamesInPhase(id, Game.Phase.STAKE_PAYMENT)
+        onlyGamesInPhase(id, STAKE_PAYMENT)
     {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
@@ -303,7 +303,7 @@ contract EtherMind {
         if (hasAllPayed) {
             // both players have payed their stake, so the game can begin
 
-            game.phase = Game.Phase.GAME_STARTED;
+            game.phase = GAME_STARTED;
             emit GameStarted(id);
         }
     }
@@ -325,15 +325,11 @@ contract EtherMind {
         //if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
 
         require(
-            game.phase == Game.Phase.ROUND_END ||
-                game.phase == Game.Phase.GAME_STARTED,
+            game.phase == ROUND_END || game.phase == GAME_STARTED,
             "previous round has not ended, game has not yet started"
         );
 
-        if (
-            game.phase == Game.Phase.ROUND_END &&
-            Game.isCodeBreaker(game, msg.sender)
-        ) {
+        if (game.phase == ROUND_END && Game.isCodeBreaker(game, msg.sender)) {
             Game.invertRoles(game);
         }
 
@@ -357,13 +353,12 @@ contract EtherMind {
 
         //require round started
         require(
-            game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORBREAKER,
+            game.phase == ROUND_PLAYING && game.flags == CB_WAITING,
             "round not started"
         );
 
         Game.stopAfkCheck(game);
 
-        //checkinput
         require(
             Codes.checkFromat(guess),
             "incorrectly set guess, ivalid colors"
@@ -381,7 +376,7 @@ contract EtherMind {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
         require(
-            game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORMASTER,
+            game.phase == ROUND_PLAYING && game.flags == CM_WAITING,
             "round not started"
         );
 
@@ -411,7 +406,7 @@ contract EtherMind {
 
         //i assume that i already checked and updated the scores
         //in order to determine the winner i must first check that the round is over
-        require(game.phase == Game.Phase.GAME_END, "game not finished");
+        require(game.phase == GAME_END, "game not finished");
 
         Game.stopAfkCheck(game);
 
@@ -481,10 +476,7 @@ contract EtherMind {
     {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        require(
-            game.phase == Game.Phase.ROUND_END,
-            "you can't upload the solution yet"
-        );
+        require(game.phase == ROUND_END, "you can't upload the solution yet");
 
         require(Codes.checkFromat(solution), "wrong solution format");
 
@@ -501,7 +493,7 @@ contract EtherMind {
             Game.updateScores(game);
 
             if (Game.isLastRound(game)) {
-                game.phase = Game.Phase.GAME_END;
+                game.phase = GAME_END;
                 emit EndOfMatch(
                     id,
                     msg.sender,
@@ -511,12 +503,12 @@ contract EtherMind {
             } else {
                 // end of the round, but not of the game
                 game.round++;
-                game.phase = Game.Phase.ROUND_END;
+                game.phase = ROUND_END;
                 emit EndOfRound(id, msg.sender, solution);
             }
         } else {
             // solution dosen't match -> PUNISH CODEMAKER
-            game.phase = Game.Phase.GAME_END;
+            game.phase = GAME_END;
             punish(id, true, "false code solution provided");
         }
     }
@@ -533,8 +525,7 @@ contract EtherMind {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
         require(
-            game.phase == Game.Phase.ROUND_END ||
-                game.phase == Game.Phase.GAME_END,
+            game.phase == ROUND_END || game.phase == GAME_END,
             "round is not over"
         );
 
@@ -553,7 +544,7 @@ contract EtherMind {
             punish(id, true, "codemaker cheated, false clues provided");
         }
 
-        game.phase = Game.Phase.GAME_END;
+        game.phase = GAME_END;
     }
 
     function startAfkCheck(
@@ -598,11 +589,11 @@ contract EtherMind {
             "too early to call AFK"
         );
 
-        if (game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORMASTER) {
+        if (game.phase == ROUND_PLAYING && game.flags == CM_WAITING) {
             punish(id, true, "punished codemaker, AFK");
         } else if (
-            game.phase == Game.Phase.ROUND_PLAYING_WAITINGFORBREAKER ||
-            game.phase == Game.Phase.ROUND_END
+            (game.phase == ROUND_PLAYING && game.flags == CB_WAITING) ||
+            game.phase == ROUND_END
         ) {
             // if the code maker offer the solution but the codebreaker doesn't do anything
             punish(id, false, "punished codebreaker, AFK");
@@ -610,6 +601,6 @@ contract EtherMind {
             revert("erron invalid state (game end)");
         }
 
-        game.phase = Game.Phase.GAME_END;
+        game.phase = GAME_END;
     }
 }
