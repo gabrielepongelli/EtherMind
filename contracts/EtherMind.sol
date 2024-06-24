@@ -86,7 +86,8 @@ contract EtherMind {
      * Require that the game is in the specified phase.
      * @param id The id of the match to check. The match is assumed to already
      * exist.
-     * @param phase The phase in which the game should be.
+     * @param phase The phase(s) in which the game should be. If is more than
+     * one, the check passes if the game is in one of the specified phases.
      */
     modifier onlyGamesInPhase(address id, Phase phase) {
         require(
