@@ -182,12 +182,11 @@ contract EtherMind {
         bool res = MatchRegister.addMatch(
             matches,
             newId,
-            otherPlayer != address(0)
+            msg.sender,
+            otherPlayer
         );
         require(res, "An error occurred while creating the new match");
 
-        Game.State storage game = MatchRegister.getMatch(matches, newId);
-        Game.initState(game, msg.sender, otherPlayer);
         emit MatchCreated(msg.sender, newId);
     }
 
@@ -344,7 +343,7 @@ contract EtherMind {
             "you are not the codemaker"
         );
 
-        Game.actOnAfkFlag(game, false); //true is set, false is unset
+        Game.stopAfkCheck(game);
 
         Game.startNewRound(game, uploadedHash);
         emit DepositHashSolution(id, msg.sender, uploadedHash);
@@ -362,8 +361,7 @@ contract EtherMind {
             "round not started"
         );
 
-        //uncheck the afk flag
-        Game.actOnAfkFlag(game, false); //true is set, false is unset
+        Game.stopAfkCheck(game);
 
         //checkinput
         require(
@@ -387,8 +385,7 @@ contract EtherMind {
             "round not started"
         );
 
-        //uncheck the afk flag
-        Game.actOnAfkFlag(game, false); //true is set, false is unset
+        Game.stopAfkCheck(game);
 
         require(Codes.checkFromat(feedback), "invalid feedback format");
 
@@ -410,13 +407,13 @@ contract EtherMind {
         onlyStartedMatches(id)
         onlyAllowedPlayers(id)
     {
-        Game.State memory game = MatchRegister.getMatch(matches, id);
+        Game.State storage game = MatchRegister.getMatch(matches, id);
 
         //i assume that i already checked and updated the scores
         //in order to determine the winner i must first check that the round is over
         require(game.phase == Game.Phase.GAME_END, "game not finished");
 
-        Game.actOnAfkFlag(game, false); //true is set, false is unset
+        Game.stopAfkCheck(game);
 
         require(
             address(this).balance >= game.stake * 2,
@@ -494,7 +491,7 @@ contract EtherMind {
         if (game.hashedSolution == Codes.hashCode(solution)) {
             // solution hashes match
 
-            Game.actOnAfkFlag(game, false); //true is set, false is unset were doing something...
+            Game.stopAfkCheck(game);
 
             game.holdOffBlockTimestamp =
                 block.number +
@@ -546,7 +543,7 @@ contract EtherMind {
             "request is too late, dispute refuted"
         );
 
-        Game.actOnAfkFlag(game, false); //true is set, false is unset were doing something...
+        Game.stopAfkCheck(game);
 
         //check cheating-> true: no cheater , false: cheater
         if (Game.verifyFeedback(game)) {
@@ -575,8 +572,7 @@ contract EtherMind {
             "you can't ask for afk check, you are the one that needs to make a move"
         );
 
-        game.afkFlag = true; //set flag, all other actions unset it
-        game.afkBlockTimestamp = block.number; //number blocco attuale
+        Game.startAfkCheck(game, block.number);
         emit AFKCheckStarted(id, msg.sender, game.afkBlockTimestamp);
     }
 
@@ -591,7 +587,10 @@ contract EtherMind {
     {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
-        require(game.afkFlag, "you must first ask for AFK check");
+        require(
+            Game.isAfkCheckActive(game),
+            "you must first ask for AFK check"
+        );
         require(
             game.afkBlockTimestamp +
                 (Configs.AFK_MAX / Configs.AVG_BLOCK_TIME) <

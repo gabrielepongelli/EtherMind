@@ -18,7 +18,7 @@ enum MatchState {
 struct MatchRecord {
     Game.State game; // Game data
     MatchState state; // State of the match
-    uint pos; // Position in the array of pending matches incremented by 2. The value of 0 represent an invalid position in the array, instead a value of 1 represent a private pending match.
+    uint pos; // Position in the array of pending matches incremented by 1. The value of 0 represent an invalid position in the array.
 }
 
 /**
@@ -34,15 +34,16 @@ library MatchRegister {
      * Create a new match.
      * @param self Matchmaking structure to use.
      * @param id The id of the new match. Must be greater than 0.
-     * @param isPrivate Specify whether the new match will be publicly
-     * accessible or not.
+     * @param creator The player who created the game.
+     * @param challenger The player who joined the game.
      * @return True if the new match is successfully created, false if a match
      * with the given id already exists or if an invalid id has been provided.
      */
     function addMatch(
         Matches storage self,
         address id,
-        bool isPrivate
+        address creator,
+        address challenger
     ) internal returns (bool) {
         if (id == address(0)) {
             return false;
@@ -52,16 +53,18 @@ library MatchRegister {
             return false;
         }
 
-        uint pos = 1;
-        if (!isPrivate) {
+        bool isPub = challenger == address(0);
+        uint pos = 0;
+        if (isPub) {
             self.pendingMatches.push(id);
-            pos = self.pendingMatches.length + 1;
+            pos = self.pendingMatches.length;
         }
 
         MatchRecord storage rec = self.existingMatches[id];
         rec.state = MatchState.PENDING;
         rec.pos = pos;
 
+        Game.initState(rec.game, creator, challenger, isPub);
         return true;
     }
 
@@ -114,16 +117,16 @@ library MatchRegister {
             return false;
         }
 
-        if (rec.pos > 1) {
+        if (rec.pos > 0) {
             if (rec.pos != self.pendingMatches.length) {
                 // the match is open, but is not the last one insterted
                 // so we swap it with the one in  the last position
 
-                self.pendingMatches[rec.pos - 2] = self.pendingMatches[
-                    self.pendingMatches.length - 1
+                self.pendingMatches[rec.pos - 1] = self.pendingMatches[
+                    self.pendingMatches.length
                 ];
 
-                self.existingMatches[self.pendingMatches[rec.pos - 2]].pos = rec
+                self.existingMatches[self.pendingMatches[rec.pos - 1]].pos = rec
                     .pos;
             }
 
@@ -145,7 +148,7 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal view returns (bool) {
-        return self.existingMatches[id].pos > 1;
+        return self.existingMatches[id].pos > 0;
     }
 
     /**
@@ -157,7 +160,9 @@ library MatchRegister {
         Matches storage self,
         address id
     ) internal view returns (bool) {
-        return self.existingMatches[id].pos == 1;
+        return
+            self.existingMatches[id].state == MatchState.PENDING &&
+            self.existingMatches[id].game.flags == ACCESSIBILITY;
     }
 
     /**
