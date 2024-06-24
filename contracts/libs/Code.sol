@@ -1,20 +1,51 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-library Codes {
-    uint8 internal constant N_COLORS = 6;
-    uint8 internal constant N_COMBINATIONS = 4;
+uint8 constant N_COLORS = 6;
+uint8 constant N_COMBINATIONS = 4;
 
-    /**
-     * A code represents a combination of colors.
-     *
-     * There are a total of N_COLORS possible colors. They are represented with
-     * values in [0, N_COLORS-1].
-     *
-     * There are N_COMBINATIONS combinations of colors.
-     */
-    type Code is uint16;
+/**
+ * A code represents a combination of colors.
+ *
+ * There are a total of N_COLORS possible colors. They are represented with
+ * values in [0, N_COLORS-1].
+ *
+ * There are N_COMBINATIONS combinations of colors.
+ */
+type Code is uint16;
+using {_code_equals as ==, CodeOp.getColor, CodeOp.checkFromat, CodeOp.hashCode} for Code global;
 
+/**
+ * Check if the codes specified are equal.
+ * @param c1 First code to check.
+ * @param c2 Second code to check.
+ * @return True if c1 == c2, false otherwise.
+ */
+function _code_equals(Code c1, Code c2) pure returns (bool) {
+    return Code.unwrap(c1) == Code.unwrap(c2);
+}
+
+/**
+ * A feedback is a concept linked to a code.
+ *
+ * For a code, a feedback contains 2 values:
+ * - CP: the number of correct colors in the correct position.
+ * - NP: the number of correct colors in the wrong position.
+ */
+type Feedback is uint8;
+using {_feedback_equals as ==, FeedbackOp.cp, FeedbackOp.np, FeedbackOp.checkFromat, FeedbackOp.isSuccess, FeedbackOp.verify} for Feedback global;
+
+/**
+ * Check if the feedbacks specified are equal.
+ * @param f1 First feedback to check.
+ * @param f2 Second feedback to check.
+ * @return True if f1 == f2, false otherwise.
+ */
+function _feedback_equals(Feedback f1, Feedback f2) pure returns (bool) {
+    return Feedback.unwrap(f1) == Feedback.unwrap(f2);
+}
+
+library CodeOp {
     /**
      * Create a new code.
      * @param c0 The code of the first color. It is assumed to be less than N_COLORS.
@@ -62,40 +93,23 @@ library Codes {
     function hashCode(Code code) internal pure returns (bytes32) {
         return sha256(abi.encodePacked(Code.unwrap(code)));
     }
+}
 
-    /**
-     * Check if the codes specified are equal.
-     * @param c1 First code to check.
-     * @param c2 Second code to check.
-     * @return True if c1 == c2, false otherwise.
-     */
-    function equals(Code c1, Code c2) internal pure returns (bool) {
-        return Code.unwrap(c1) == Code.unwrap(c2);
-    }
-
-    /**
-     * A feedback is a concept linked to a code.
-     *
-     * For a code, a feedback contains 2 values:
-     * - CP: the number of correct colors in the correct position.
-     * - NP: the number of correct colors in the wrong position.
-     */
-    type Feedback is uint8;
-
+library FeedbackOp {
     /**
      * Create a new feedback.
-     * @param cp The number of correct colors in the correct position.
-     * @param np The number of correct colors in the wrong position.
+     * @param _cp The number of correct colors in the correct position.
+     * @param _np The number of correct colors in the wrong position.
      */
-    function newFeedback(uint8 cp, uint8 np) internal pure returns (Feedback) {
-        return Feedback.wrap(cp | (np << 4));
+    function newFeedback(uint8 _cp, uint8 _np) internal pure returns (Feedback) {
+        return Feedback.wrap(_cp | (_np << 4));
     }
 
     /**
      * Get the CP value of the given feedback.
      * @param f The feedback to use. It is assumed to be in a valid format.
      */
-    function getCP(Feedback f) internal pure returns (uint8) {
+    function cp(Feedback f) internal pure returns (uint8) {
         return uint8(Feedback.unwrap(f) & 15);
     }
 
@@ -103,7 +117,7 @@ library Codes {
      * Get the NP value of the given feedback.
      * @param f The feedback to use. It is assumed to be in a valid format.
      */
-    function getNP(Feedback f) internal pure returns (uint8) {
+    function np(Feedback f) internal pure returns (uint8) {
         return uint8(Feedback.unwrap(f) & (15 << 4));
     }
 
@@ -113,17 +127,17 @@ library Codes {
      */
     function checkFromat(Feedback f) internal pure returns (bool) {
         return
-            (getNP(f) <= N_COMBINATIONS) &&
-            (getCP(f) <= N_COMBINATIONS) &&
-            (getCP(f) + getNP(f) <= N_COMBINATIONS);
+            (f.np() <= N_COMBINATIONS) &&
+            (f.cp() <= N_COMBINATIONS) &&
+            (f.cp() + f.np() <= N_COMBINATIONS);
     }
 
     /**
      * Check if the given feedback represent a completely correct guess.
      * @param f The feedback to check. It is assumed to be in a valid format.
      */
-    function isSuccessFeedback(Feedback f) internal pure returns (bool) {
-        return getNP(f) == 0 && getCP(f) == N_COMBINATIONS;
+    function isSuccess(Feedback f) internal pure returns (bool) {
+        return f.np() == 0 && f.cp() == N_COMBINATIONS;
     }
 
     /**
@@ -143,7 +157,7 @@ library Codes {
 
         // count the correct positions (and correct colors)
         for (uint8 i = 0; i < N_COMBINATIONS; i++) {
-            if (Codes.getColor(guess, i) == Codes.getColor(solution, i)) {
+            if (guess.getColor(i) == solution.getColor(i)) {
                 correctPosition++;
                 isCorrectColorAndPos[i] = true;
                 pairedPos[i] = true;
@@ -156,7 +170,7 @@ library Codes {
                 for (uint8 j = i + 1; j < N_COMBINATIONS; j++) {
                     if (
                         !pairedPos[j] &&
-                        Codes.getColor(solution, i) == Codes.getColor(guess, j)
+                        solution.getColor(i) == guess.getColor(j)
                     ) {
                         correctColor++;
                         pairedPos[j] = true;
@@ -176,14 +190,12 @@ library Codes {
      * @param solution The correct code. It is assumed to be in a valid format.
      * @param guess The guess. It is assumed to be in a valid format.
      */
-    function verifyFeedback(
+    function verify(
         Feedback feedback,
         Code solution,
         Code guess
     ) internal pure returns (bool) {
         Feedback generatedFeedback = generateFeedback(solution, guess);
-        return
-            getCP(generatedFeedback) == getCP(feedback) &&
-            getNP(generatedFeedback) == getNP(feedback);
+        return generatedFeedback == feedback;
     }
 }

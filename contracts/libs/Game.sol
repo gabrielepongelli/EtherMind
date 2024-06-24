@@ -17,10 +17,10 @@ library Game {
         Flags flags; // Array of flags
         Phase phase; // Phase in which the game is currently in.
         bytes32 hashedSolution; //uploaded hash
-        Codes.Code solution;
+        Code solution;
         uint256 afkBlockTimestamp; //to keep track of the maximum ammount of time a player can be afk
-        Codes.Code[] movesHistory;
-        Codes.Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
+        Code[] movesHistory;
+        Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
         uint round;
         uint creatorScore; //poins counter, all slots in storage are implicitly zero until set to something else.
         uint challengerScore;
@@ -150,8 +150,7 @@ library Game {
     function verifyFeedback(State memory self) internal pure returns (bool) {
         for (uint256 i = 0; i < self.movesHistory.length; i++) {
             if (
-                !Codes.verifyFeedback(
-                    self.feedbackHistory[i],
+                !self.feedbackHistory[i].verify(
                     self.solution,
                     self.movesHistory[i]
                 )
@@ -211,7 +210,7 @@ library Game {
         // reset history and round data
         delete self.movesHistory;
         delete self.feedbackHistory;
-        self.solution = Codes.newCode(0, 0, 0, 0);
+        self.solution = CodeOp.newCode(0, 0, 0, 0);
 
         // new game status
         self.phase = ROUND_PLAYING;
@@ -219,7 +218,7 @@ library Game {
         self.hashedSolution = hashedSolution;
     }
 
-    function submitGuess(State storage self, Codes.Code guess) internal {
+    function submitGuess(State storage self, Code guess) internal {
         self.movesHistory.push(guess);
         self.flags = (self.flags - CB_WAITING) + CM_WAITING;
     }
@@ -227,21 +226,14 @@ library Game {
     function roundEndReached(State memory self) internal pure returns (bool) {
         return
             (self.movesHistory.length == Configs.N_GUESSES) ||
-            (
-                Codes.isSuccessFeedback(
-                    self.feedbackHistory[self.feedbackHistory.length - 1]
-                )
-            );
+            (self.feedbackHistory[self.feedbackHistory.length - 1].isSuccess());
     }
 
     function isRoundEnded(State memory self) internal pure returns (bool) {
         return self.phase == ROUND_END;
     }
 
-    function submitFeedback(
-        State storage self,
-        Codes.Feedback feedback
-    ) internal {
+    function submitFeedback(State storage self, Feedback feedback) internal {
         self.feedbackHistory.push(feedback);
         self.flags = self.flags - CM_WAITING;
         self.phase = roundEndReached(self) ? ROUND_END : ROUND_PLAYING;

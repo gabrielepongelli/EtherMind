@@ -138,10 +138,10 @@ contract EtherMind {
     event GameStarted(address id);
     event Failure(string stringFailure);
     event DepositHashSolution(address id, address from, bytes32 solution);
-    event DepositGuess(address id, address from, Codes.Code guess);
-    event DepositFeedback(address id, address from, Codes.Feedback feedback);
+    event DepositGuess(address id, address from, Code guess);
+    event DepositFeedback(address id, address from, Feedback feedback);
     event EndOfGuesses(address id, address from);
-    event EndOfRound(address id, address from, Codes.Code solution);
+    event EndOfRound(address id, address from, Code solution);
     event PunishmentDispensed(address id, address from, string reason);
     event RewardDispensed(
         address id,
@@ -347,7 +347,7 @@ contract EtherMind {
 
     function makeGuess(
         address id,
-        Codes.Code guess
+        Code guess
     ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeBreaker(id) {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
@@ -359,10 +359,7 @@ contract EtherMind {
 
         Game.stopAfkCheck(game);
 
-        require(
-            Codes.checkFromat(guess),
-            "incorrectly set guess, ivalid colors"
-        );
+        require(guess.checkFromat(), "incorrectly set guess, ivalid colors");
 
         Game.submitGuess(game, guess);
         emit DepositGuess(id, msg.sender, guess);
@@ -371,7 +368,7 @@ contract EtherMind {
     //save feedback
     function giveFeedback(
         address id,
-        Codes.Feedback feedback
+        Feedback feedback
     ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeMaker(id) {
         Game.State storage game = MatchRegister.getMatch(matches, id);
 
@@ -382,7 +379,7 @@ contract EtherMind {
 
         Game.stopAfkCheck(game);
 
-        require(Codes.checkFromat(feedback), "invalid feedback format");
+        require(feedback.checkFromat(), "invalid feedback format");
 
         Game.submitFeedback(game, feedback);
 
@@ -466,7 +463,7 @@ contract EtherMind {
 
     function uploadSolution(
         address id,
-        Codes.Code solution
+        Code solution
     )
         external
         payable
@@ -478,9 +475,9 @@ contract EtherMind {
 
         require(game.phase == ROUND_END, "you can't upload the solution yet");
 
-        require(Codes.checkFromat(solution), "wrong solution format");
+        require(solution.checkFromat(), "wrong solution format");
 
-        if (game.hashedSolution == Codes.hashCode(solution)) {
+        if (game.hashedSolution == solution.hashCode()) {
             // solution hashes match
 
             Game.stopAfkCheck(game);
