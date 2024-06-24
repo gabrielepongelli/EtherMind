@@ -107,7 +107,7 @@ library Game {
             ? self.flags + CREATOR_PAYED
             : self.flags + CHALLENGER_PAYED;
 
-        return self.flags == (CREATOR_PAYED | CHALLENGER_PAYED);
+        return self.flags == CREATOR_PAYED & CHALLENGER_PAYED;
     }
 
     /**
