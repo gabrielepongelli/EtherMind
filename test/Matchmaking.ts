@@ -141,7 +141,7 @@ describe("Matchmaking", function () {
 
                 await game.connect(challenger).joinMatch(matchId, 10);
                 await expect(game.connect(otherPlayer).joinMatch(matchId, 10)).to.be.revertedWith(
-                    "The match specified is already started"
+                    "The match specified is already started or do not exists"
                 );
             });
         });
