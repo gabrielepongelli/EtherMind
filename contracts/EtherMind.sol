@@ -9,8 +9,7 @@ import "./libs/Utils.sol";
 import "./libs/Configs.sol";
 
 contract EtherMind {
-    Matches private matches;
-    uint8 private nRand;
+    MatchRegister private matchReg;
 
     /**
      * Modifiers
@@ -21,10 +20,7 @@ contract EtherMind {
      * @param id The id of the match to check.
      */
     modifier onlyExistingIds(address id) {
-        require(
-            MatchRegister.isValid(matches, id),
-            "The match specified does not exist"
-        );
+        require(matchReg.isValid(id), "The match specified does not exist");
         _;
     }
 
@@ -33,38 +29,7 @@ contract EtherMind {
      * @param id The id of the match to check.
      */
     modifier onlyExistingIdsOrZero(address id) {
-        require(
-            id == address(0) || MatchRegister.isValid(matches, id),
-            "Invalid match id"
-        );
-        _;
-    }
-
-    /**
-     * Require that the match id specified represents a pending match.
-     * @param id The id of the match to check. The match is assumed to already
-     * exist.
-     */
-    modifier onlyPendingMatches(address id) {
-        require(
-            !MatchRegister.isStarted(matches, id),
-            "The match specified is already started"
-        );
-
-        _;
-    }
-
-    /**
-     * Require that the match id specified represents an already started match.
-     * @param id The id of the match to check. The match is assumed to already
-     * exist.
-     */
-    modifier onlyStartedMatches(address id) {
-        require(
-            MatchRegister.isStarted(matches, id),
-            "The match specified is not started yet"
-        );
-
+        require(id == address(0) || matchReg.isValid(id), "Invalid match id");
         _;
     }
 
@@ -75,8 +40,8 @@ contract EtherMind {
      */
     modifier onlyAllowedPlayers(address id) {
         require(
-            msg.sender == MatchRegister.getMatch(matches, id).creator ||
-                msg.sender == MatchRegister.getMatch(matches, id).challenger,
+            msg.sender == matchReg.getMatch(id).creator ||
+                msg.sender == matchReg.getMatch(id).challenger,
             "You are not part of the match specified"
         );
         _;
@@ -91,38 +56,36 @@ contract EtherMind {
      */
     modifier onlyGamesInPhase(address id, Phase phase) {
         require(
-            MatchRegister.getMatch(matches, id).phase == phase,
+            matchReg.getMatch(id).phase == phase,
             "Operation not permitted in this phase of the game"
         );
         _;
     }
 
-    //check that a function is been caled by the codemaker
+    /**
+     * Require that the caller is the CodeMaker of the specified match.
+     * @param id The id of the match to check. The match is assumed to already
+     * exist.
+     */
     modifier onlyCodeMaker(address id) {
-        //given match ID i need to figure out who is the code maker
-        Game.State memory game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
         require(
-            Game.isCodeMaker(game, msg.sender),
-            "Caller is not the codemaker"
+            game.isCodeMaker(msg.sender),
+            "The caller is not the CodeMaker"
         );
         _;
     }
 
-    //check that a function is been caled by the codebreaker
+    /**
+     * Require that the caller is the CodeBreaker of the specified match.
+     * @param id The id of the match to check. The match is assumed to already
+     * exist.
+     */
     modifier onlyCodeBreaker(address id) {
-        //given match ID i need to figure out who is the codebreaker
-        Game.State memory game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
         require(
-            Game.isCodeBreaker(game, msg.sender),
-            "Caller is not the codebreaker"
-        );
-        _;
-    }
-
-    modifier onlyMe() {
-        require(
-            msg.sender == address(this),
-            "You are not allowed to call this function"
+            game.isCodeBreaker(msg.sender),
+            "The caller is not the CodeBreaker"
         );
         _;
     }
@@ -137,34 +100,47 @@ contract EtherMind {
     event StakeFixed(address id, uint256 stake);
     event StakePayed(address id, address player);
     event GameStarted(address id);
-    event Failure(string stringFailure);
-    event DepositHashSolution(address id, address from, bytes32 solution);
-    event DepositGuess(address id, address from, Code guess);
-    event DepositFeedback(address id, address from, Feedback feedback);
-    event EndOfGuesses(address id, address from);
-    event EndOfRound(address id, address from, Code solution);
-    event PunishmentDispensed(address id, address from, string reason);
-    event RewardDispensed(
+    event RoundStarted(
         address id,
-        address from,
-        uint creatorScore,
-        uint challengerScore,
-        uint reward
+        uint round,
+        address codemaker,
+        address codebreaker
     );
-    event EndOfMatch(
-        address id,
-        address from,
-        uint creatorScore,
-        uint challengerScore
-    );
-    event AFKCheckStarted(address id, address from, uint256 timestamp);
-    event StartOfNewRound(address id, address from);
+    event SolutionHashSubmitted(address id, address from);
+    event GuessSubmitted(address id, address from, Code guess);
+    event FeedbackSubmitted(address id, address from, Feedback feedback);
+    event RoundEnded(address id, uint round);
+    event SolutionSubmitted(address id, address from, Code solution);
+    event ScoresUpdated(address id, uint creatorScore, uint challengerScore);
+    event PlayerPunished(address id, address player, string reason);
+    event GameEnded(address id);
+    event RewardDispensed(address id, address to, uint reward);
+    event AfkCheckStarted(address id, address from, uint256 time);
+    event MatchEnded(address id);
+    event Failure(string message);
 
     /**
-     * @dev TODO
+     * Punish a player of the match specified.
+     * @param id The id of the match where the player that has to be punished
+     * is playing in.
+     * @param player The player that has to be punished.
+     * @param reason The reason why the player will be punished.
      */
-    constructor() {
-        nRand = 0;
+    function punish(address id, address player, string memory reason) internal {
+        Game storage game = matchReg.getMatch(id);
+
+        // it should pass, it's just to make sure
+        require(
+            address(this).balance >= game.stake * 2,
+            "Insufficient balance in contract"
+        );
+
+        address payable playerToPay = payable(
+            game.isCodeMaker(player) ? game.codeBreaker() : game.codeMaker()
+        );
+
+        playerToPay.transfer(game.stake * 2);
+        emit PlayerPunished(id, player, reason);
     }
 
     /**
@@ -178,14 +154,9 @@ contract EtherMind {
             "You cannot create a private match with yourself"
         );
 
-        address newId = address(uint160(Utils.rand(++nRand)));
+        address newId = address(uint160(Utils.rand(1)));
 
-        bool res = MatchRegister.addMatch(
-            matches,
-            newId,
-            msg.sender,
-            otherPlayer
-        );
+        bool res = matchReg.addMatch(newId, msg.sender, otherPlayer);
         require(res, "An error occurred while creating the new match");
 
         emit MatchCreated(msg.sender, newId);
@@ -200,49 +171,50 @@ contract EtherMind {
     function joinMatch(
         address id,
         uint256 stake
-    ) external onlyExistingIdsOrZero(id) onlyPendingMatches(id) {
-        Game.State storage game;
+    ) external onlyExistingIdsOrZero(id) {
+        Game storage game;
         if (id == address(0)) {
             // randomly extract match
 
-            uint nPendingMatches = MatchRegister.nPendingMatches(matches);
-            if (nPendingMatches == 0) {
-                revert("There are no available matches");
-            }
+            uint nPendingMatches = matchReg.nPendingMatches();
+            require(nPendingMatches > 0, "There are no available matches");
 
-            uint rand = Utils.rand(++nRand) % nPendingMatches;
+            uint rand = Utils.rand(1) % nPendingMatches;
             uint pos = rand;
             do {
-                (id, game) = MatchRegister.getPending(matches, pos);
+                (id, game) = matchReg.getPending(pos);
                 pos = (pos + 1) % nPendingMatches;
             } while (msg.sender == game.creator && pos != rand);
 
-            if (msg.sender == game.creator) {
-                revert("There are no available matches");
-            }
+            require(
+                msg.sender != game.creator,
+                "There are no available matches"
+            );
         } else {
             // specific game chosen
 
-            game = MatchRegister.getMatch(matches, id);
+            game = matchReg.getMatch(id);
 
-            if (msg.sender == game.creator) {
-                revert("You cannot join your own game");
-            }
+            require(
+                game.phase == PENDING,
+                "The match specified is already started or do not exists"
+            );
 
-            if (
-                MatchRegister.isPrivatePending(matches, id) &&
-                game.challenger != msg.sender
-            ) {
-                revert("You are not allowed to join this match");
-            }
+            require(
+                msg.sender != game.creator,
+                "You cannot join your own game"
+            );
+
+            require(
+                (game.flags != IS_PRIVATE) || (game.challenger == msg.sender),
+                "You are not allowed to join this match"
+            );
         }
 
-        MatchRegister.setMatchStarted(matches, id);
-        game.challenger = payable(msg.sender);
-        game.phase = STAKE_DECISION;
+        matchReg.startMatch(id, msg.sender);
         emit MatchStarted(id, game.creator, game.challenger);
 
-        Game.setNewStake(game, msg.sender, stake);
+        game.newStake(msg.sender, stake);
         emit StakeProposal(id, game.stake);
     }
 
@@ -260,18 +232,16 @@ contract EtherMind {
     )
         external
         onlyExistingIds(id)
-        onlyStartedMatches(id)
-        onlyAllowedPlayers(id)
         onlyGamesInPhase(id, STAKE_DECISION)
+        onlyAllowedPlayers(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
+        game.newStake(msg.sender, stake);
 
-        if (!Game.isSameProposer(game, msg.sender) && game.stake == stake) {
+        if (game.phase == STAKE_PAYMENT) {
             // stake value decided
-            game.phase = STAKE_PAYMENT;
             emit StakeFixed(id, stake);
         } else {
-            Game.setNewStake(game, msg.sender, stake);
             emit StakeProposal(id, game.stake);
         }
     }
@@ -286,182 +256,107 @@ contract EtherMind {
         external
         payable
         onlyExistingIds(id)
-        onlyStartedMatches(id)
-        onlyAllowedPlayers(id)
         onlyGamesInPhase(id, STAKE_PAYMENT)
+        onlyAllowedPlayers(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
 
         require(game.stake == msg.value, "Wrong stake value");
-        require(
-            !Game.hasAlreadyPayed(game, msg.sender),
-            "You have already payed"
-        );
+        require(!game.hasAlreadyPayed(msg.sender), "You have already payed");
 
-        bool hasAllPayed = Game.newStakePayment(game, msg.sender);
+        bool hasAllPayed = game.newPayment(msg.sender);
         emit StakePayed(id, msg.sender);
 
         if (hasAllPayed) {
             // both players have payed their stake, so the game can begin
-
-            game.phase = GAME_STARTED;
+            (address maker, address breaker) = game.startNewRound();
             emit GameStarted(id);
+            emit RoundStarted(id, game.round, maker, breaker);
         }
     }
 
-    //code maker is checked, the hash uploaded
-    function uploadCodeHash(
+    /**
+     * Upload the hash of the solution to use in a new round.
+     * @param id The id of the match on which to operate.
+     * @param solutionHash The hash of the solution.
+     */
+    function newSolutionHash(
         address id,
-        bytes32 uploadedHash
+        bytes32 solutionHash
     )
         external
         onlyExistingIds(id)
-        onlyStartedMatches(id)
-        onlyAllowedPlayers(id)
+        onlyGamesInPhase(id, ROUND_START)
+        onlyCodeMaker(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
 
-        //reset moves history and feedback history -> if its the first turn nothing is done, all other turns is resets the history since if this function is called it means that no dipute is necessary
-        //maybe some checks on the hash?
-        //if a transaction reverts from the point of view of the blockchain is like it never happened, no need to emit the failure
+        // in case it was active
+        game.stopAfkTimer();
 
-        require(
-            game.phase == ROUND_END || game.phase == GAME_STARTED,
-            "previous round has not ended, game has not yet started"
-        );
-
-        if (game.phase == ROUND_END && Game.isCodeBreaker(game, msg.sender)) {
-            Game.invertRoles(game);
-        }
-
-        // check that the caller is the code maker NOW
-        require(
-            Game.isCodeMaker(game, msg.sender),
-            "you are not the codemaker"
-        );
-
-        Game.stopAfkCheck(game);
-
-        Game.startNewRound(game, uploadedHash);
-        emit DepositHashSolution(id, msg.sender, uploadedHash);
+        game.submitSolutionHash(solutionHash);
+        emit SolutionHashSubmitted(id, msg.sender);
     }
 
-    function makeGuess(
+    /**
+     * Upload a new guess.
+     * @param id The id of the match on which to operate.
+     * @param guess The new guess.
+     */
+    function newGuess(
         address id,
         Code guess
-    ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeBreaker(id) {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+    )
+        public
+        onlyExistingIds(id)
+        onlyGamesInPhase(id, GUESS_SUBMISSION)
+        onlyCodeBreaker(id)
+    {
+        require(guess.checkFromat(), "Invalid guess format");
 
-        //require round started
-        require(
-            game.phase == ROUND_PLAYING && game.flags == CB_WAITING,
-            "round not started"
-        );
+        Game storage game = matchReg.getMatch(id);
 
-        Game.stopAfkCheck(game);
+        // in case it was active
+        game.stopAfkTimer();
 
-        require(guess.checkFromat(), "incorrectly set guess, ivalid colors");
-
-        Game.submitGuess(game, guess);
-        emit DepositGuess(id, msg.sender, guess);
+        game.submitGuess(guess);
+        emit GuessSubmitted(id, msg.sender, guess);
     }
 
-    //save feedback
-    function giveFeedback(
+    /**
+     * Upload a new feedback related to the last guess uploaded.
+     * @param id The id of the match on which to operate.
+     * @param feedback The new feedback.
+     */
+    function newFeedback(
         address id,
         Feedback feedback
-    ) public onlyExistingIds(id) onlyStartedMatches(id) onlyCodeMaker(id) {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
-
-        require(
-            game.phase == ROUND_PLAYING && game.flags == CM_WAITING,
-            "round not started"
-        );
-
-        Game.stopAfkCheck(game);
-
-        require(feedback.checkFromat(), "invalid feedback format");
-
-        Game.submitFeedback(game, feedback);
-
-        if (Game.isRoundEnded(game)) {
-            emit EndOfGuesses(id, msg.sender);
-        } else {
-            emit DepositFeedback(id, msg.sender, feedback);
-        }
-    }
-
-    function checkWinner(
-        address id
     )
-        external
-        payable
+        public
         onlyExistingIds(id)
-        onlyStartedMatches(id)
-        onlyAllowedPlayers(id)
+        onlyGamesInPhase(id, FEEDBACK_SUBMISSION)
+        onlyCodeMaker(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        require(feedback.checkFromat(), "Invalid feedback format");
 
-        //i assume that i already checked and updated the scores
-        //in order to determine the winner i must first check that the round is over
-        require(game.phase == GAME_END, "game not finished");
+        Game storage game = matchReg.getMatch(id);
 
-        Game.stopAfkCheck(game);
+        // in case it was active
+        game.stopAfkTimer();
 
-        require(
-            address(this).balance >= game.stake * 2,
-            "Insufficient balance in contract"
-        );
+        game.submitFeedback(feedback);
+        emit FeedbackSubmitted(id, msg.sender, feedback);
 
-        //if this is called by the codemaker force him to wait otherwise do it immidiately
-        if (
-            Game.isCodeBreaker(game, msg.sender) ||
-            block.number >= game.holdOffBlockTimestamp
-        ) {
-            address payable winner = payable(Game.getWinner(game));
-
-            if (winner != address(0)) {
-                // transfer the amount to the winner
-                winner.transfer(game.stake * 2);
-            } else {
-                // it's a draw
-                game.creator.transfer(game.stake);
-                game.challenger.transfer(game.stake);
-            }
-        } else {
-            revert("Operation performed only after wait time.");
+        if (game.isRoundEnded()) {
+            emit RoundEnded(id, game.round);
         }
-
-        emit RewardDispensed(
-            id,
-            msg.sender,
-            game.creatorScore,
-            game.challengerScore,
-            game.stake
-        );
     }
 
-    function punish(
-        address id,
-        bool codeMaker,
-        string memory eventMsg
-    ) internal onlyMe {
-        Game.State memory game = MatchRegister.getMatch(matches, id);
-
-        // ensure the contract has enough balance to make the transfer
-        require(
-            address(this).balance >= game.stake * 2,
-            "Insufficient balance in contract"
-        );
-
-        address payable playerToPay = payable(
-            codeMaker ? Game.getCodeBreaker(game) : Game.getCodeMaker(game)
-        );
-
-        playerToPay.transfer(game.stake * 2);
-        emit PunishmentDispensed(id, msg.sender, eventMsg);
-    }
-
+    /**
+     * Upload the solution of this round.
+     * @param id The id of the match on which to operate.
+     * @param solution The solution of the round.
+     */
     function uploadSolution(
         address id,
         Code solution
@@ -469,136 +364,183 @@ contract EtherMind {
         external
         payable
         onlyExistingIds(id)
-        onlyStartedMatches(id)
+        onlyGamesInPhase(id, ROUND_END)
         onlyCodeMaker(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        require(solution.checkFromat(), "Invalid solution format");
 
-        require(game.phase == ROUND_END, "you can't upload the solution yet");
+        Game storage game = matchReg.getMatch(id);
 
-        require(solution.checkFromat(), "wrong solution format");
-
-        if (game.hashedSolution == solution.hashCode()) {
+        if (game.submitFinalSolution(solution)) {
             // solution hashes match
 
-            Game.stopAfkCheck(game);
+            game.stopAfkTimer();
+            emit SolutionSubmitted(id, msg.sender, solution);
 
-            game.holdOffBlockTimestamp =
-                block.number +
-                (Configs.WAIT_UNTIL / Configs.AVG_BLOCK_TIME); //THIS IS FOR DISPUTE CHECK
-            game.solution = solution; //THIS ALSO, for reference and cheating checking
+            game.startDisputeTimer(block.number);
+            game.updateScores();
+            emit ScoresUpdated(id, game.creatorScore, game.challengerScore);
 
-            Game.updateScores(game);
-
-            if (Game.isLastRound(game)) {
-                game.phase = GAME_END;
-                emit EndOfMatch(
-                    id,
-                    msg.sender,
-                    game.creatorScore,
-                    game.challengerScore
-                );
+            if (game.endGame()) {
+                emit GameEnded(id);
             } else {
-                // end of the round, but not of the game
-                game.round++;
-                game.phase = ROUND_END;
-                emit EndOfRound(id, msg.sender, solution);
+                (address maker, address breaker) = game.startNewRound();
+                emit RoundStarted(id, game.round, maker, breaker);
             }
         } else {
-            // solution dosen't match -> PUNISH CODEMAKER
-            game.phase = GAME_END;
-            punish(id, true, "false code solution provided");
+            // solution dosen't match -> punish CodeMaker
+            punish(id, msg.sender, "Wrong solution provided");
+            emit MatchEnded(id);
         }
     }
 
+    /**
+     * Start a new dispute.
+     * @param id The id of the match on which to operate.
+     */
     function dispute(
         address id
     )
         external
         payable
         onlyExistingIds(id)
-        onlyStartedMatches(id)
-        onlyCodeBreaker(id)
+        onlyGamesInPhase(id, ROUND_START)
+        onlyCodeMaker(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
 
         require(
-            game.phase == ROUND_END || game.phase == GAME_END,
-            "round is not over"
+            game.round > 1,
+            "Operation not permitted in this phase of the game"
         );
 
         require(
-            game.holdOffBlockTimestamp > block.number,
-            "request is too late, dispute refuted"
+            game.isDisputeTimerEnded(block.number),
+            "The request is too late, dispute refuted"
         );
 
-        Game.stopAfkCheck(game);
-
-        //check cheating-> true: no cheater , false: cheater
-        if (Game.verifyFeedback(game)) {
-            punish(id, false, "codebreaker unjustly accused codemaster");
+        if (game.verifyFeedbacks()) {
+            punish(id, msg.sender, "Player unjustly accused the opponent");
         } else {
-            // cheating detected, punish the codemaker
-            punish(id, true, "codemaker cheated, false clues provided");
+            // cheating detected, punish the OLD CodeMaker (the NEW CodeBreaker)
+            punish(id, game.codeBreaker(), "Player provided false feedbacks");
         }
 
-        game.phase = GAME_END;
+        matchReg.deleteMatch(id);
+        emit MatchEnded(id);
     }
 
+    /**
+     * Request an AFK check of the opponent.
+     * @param id The id of the match on which to operate.
+     */
     function startAfkCheck(
         address id
     )
         external
         onlyExistingIds(id)
-        onlyStartedMatches(id)
+        onlyGamesInPhase(
+            id,
+            ROUND_START | GUESS_SUBMISSION | FEEDBACK_SUBMISSION | ROUND_END
+        )
         onlyAllowedPlayers(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
 
         // check that whoever is calling is in the position to wait the other
         require(
-            Game.canPlayerWait(game, msg.sender),
-            "you can't ask for afk check, you are the one that needs to make a move"
+            game.canStartAfkTimer(msg.sender),
+            "You can't ask for an afk check"
         );
 
-        Game.startAfkCheck(game, block.number);
-        emit AFKCheckStarted(id, msg.sender, game.afkBlockTimestamp);
+        game.startAfkTimer(block.number);
+        emit AfkCheckStarted(id, msg.sender, Configs.AFK_MAX);
     }
 
-    function stopMatch(
+    /**
+     * Stop the match if the other player hasn't passed the AFK check.
+     * @param id The id of the match on which to operate.
+     */
+    function stopMatchForAfk(
         address id
     )
         external
         payable
         onlyExistingIds(id)
-        onlyStartedMatches(id)
+        onlyGamesInPhase(
+            id,
+            ROUND_START | GUESS_SUBMISSION | FEEDBACK_SUBMISSION | ROUND_END
+        )
         onlyAllowedPlayers(id)
     {
-        Game.State storage game = MatchRegister.getMatch(matches, id);
+        Game storage game = matchReg.getMatch(id);
 
+        require(game.isAfkTimerStarted(), "No AFK check was started");
         require(
-            Game.isAfkCheckActive(game),
-            "you must first ask for AFK check"
-        );
-        require(
-            game.afkBlockTimestamp +
-                (Configs.AFK_MAX / Configs.AVG_BLOCK_TIME) <
-                block.number,
-            "too early to call AFK"
+            game.isAfkTimerEnded(block.number),
+            "Too early to end the match for AFK"
         );
 
-        if (game.phase == ROUND_PLAYING && game.flags == CM_WAITING) {
-            punish(id, true, "punished codemaker, AFK");
-        } else if (
-            (game.phase == ROUND_PLAYING && game.flags == CB_WAITING) ||
-            game.phase == ROUND_END
-        ) {
-            // if the code maker offer the solution but the codebreaker doesn't do anything
-            punish(id, false, "punished codebreaker, AFK");
+        if (game.isCodeMakerWaited()) {
+            punish(id, game.codeMaker(), "Player is AFK");
+        } else if (game.isCodeBreakerWaited()) {
+            punish(id, game.codeBreaker(), "Player is AFK");
         } else {
-            revert("erron invalid state (game end)");
+            // invalid state, return stakes and end the match
+            payable(game.creator).transfer(game.stake);
+            payable(game.challenger).transfer(game.stake);
+            emit Failure("Internal error");
+            matchReg.deleteMatch(id);
+            emit MatchEnded(id);
         }
 
-        game.phase = GAME_END;
+        matchReg.deleteMatch(id);
+        emit MatchEnded(id);
+    }
+
+    /**
+     * Check the winner at the end of the game and terminate the match.
+     * @param id The id of the match on which to operate.
+     */
+    function checkWinner(
+        address id
+    )
+        external
+        payable
+        onlyExistingIds(id)
+        onlyGamesInPhase(id, GAME_END)
+        onlyAllowedPlayers(id)
+    {
+        Game storage game = matchReg.getMatch(id);
+
+        // it should pass, it's just to make sure
+        require(
+            address(this).balance >= game.stake * 2,
+            "Insufficient balance in contract"
+        );
+
+        // if this is called by the CodeMaker force him to wait for the dispute
+        // timeout, otherwise do it immediately
+        require(
+            game.isCodeBreaker(msg.sender) ||
+                game.isDisputeTimerEnded(block.number),
+            "You must first wait for the dispute time"
+        );
+
+        address payable winner = payable(game.winner());
+        if (winner != address(0)) {
+            // transfer the amount to the winner
+            // double the stake because
+            winner.transfer(game.stake * 2);
+        } else {
+            // it's a draw
+            payable(game.creator).transfer(game.stake);
+            payable(game.challenger).transfer(game.stake);
+        }
+
+        emit RewardDispensed(id, msg.sender, game.stake);
+
+        matchReg.deleteMatch(id);
+        emit MatchEnded(id);
     }
 }

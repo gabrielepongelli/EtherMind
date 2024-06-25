@@ -7,19 +7,29 @@ import "./Game.sol";
  * Record representing a match.
  */
 struct MatchRecord {
-    Game.State game; // Game data
+    Game game; // Game data
     uint pos; // Position in the array of pending matches incremented by 1. The value of 0 represent an invalid position in the array.
 }
 
 /**
  * Structure that handles matchmaking.
  */
-struct Matches {
+struct MatchRegister {
     mapping(address => MatchRecord) existingMatches; // All the matches that currently exist
     address[] pendingMatches; // Addresses of publicly accessible pending matches
 }
 
-library MatchRegister {
+using {
+    MatchRegisterOp.addMatch,
+    MatchRegisterOp.getMatch,
+    MatchRegisterOp.isValid,
+    MatchRegisterOp.startMatch,
+    MatchRegisterOp.deleteMatch,
+    MatchRegisterOp.nPendingMatches,
+    MatchRegisterOp.getPending
+} for MatchRegister global;
+
+library MatchRegisterOp {
     /**
      * Create a new match.
      * @param self Matchmaking structure to use.
@@ -30,7 +40,7 @@ library MatchRegister {
      * with the given id already exists or if an invalid id has been provided.
      */
     function addMatch(
-        Matches storage self,
+        MatchRegister storage self,
         address id,
         address creator,
         address challenger
@@ -51,10 +61,11 @@ library MatchRegister {
         }
 
         MatchRecord storage rec = self.existingMatches[id];
-        rec.game.phase = PENDING;
         rec.pos = pos;
-
-        Game.initState(rec.game, creator, challenger, isPub);
+        rec.game.flags = isPub ? rec.game.flags : rec.game.flags + IS_PRIVATE;
+        rec.game.creator = creator;
+        rec.game.challenger = challenger;
+        rec.game.phase = PENDING;
         return true;
     }
 
@@ -66,9 +77,9 @@ library MatchRegister {
      * @return The state of the specified match.
      */
     function getMatch(
-        Matches storage self,
+        MatchRegister storage self,
         address id
-    ) internal view returns (Game.State storage) {
+    ) internal view returns (Game storage) {
         return self.existingMatches[id].game;
     }
 
@@ -78,7 +89,7 @@ library MatchRegister {
      * @param id The id of the match to check.
      */
     function isValid(
-        Matches storage self,
+        MatchRegister storage self,
         address id
     ) internal view returns (bool) {
         if (id == address(0)) {
@@ -92,12 +103,14 @@ library MatchRegister {
      * Set a match as started.
      * @param self Matchmaking structure to use.
      * @param id The id of the match to modify.
+     * @param finalChallenger The challenger of the match that joined.
      * @return True if the modification succeeded. False if the match is
      * already started or the match do not exist.
      */
-    function setMatchStarted(
-        Matches storage self,
-        address id
+    function startMatch(
+        MatchRegister storage self,
+        address id,
+        address finalChallenger
     ) internal returns (bool) {
         MatchRecord storage rec = self.existingMatches[id];
         if (rec.game.phase != PENDING) {
@@ -123,61 +136,23 @@ library MatchRegister {
         }
 
         rec.game.phase = STAKE_DECISION;
+        rec.game.challenger = payable(finalChallenger);
         return true;
     }
 
     /**
-     * Check whether a match is pending and publicly accessible or not.
+     * Delete an already started match.
      * @param self Matchmaking structure to use.
-     * @param id The id of the match to check.
-     */
-    function isPublicPending(
-        Matches storage self,
-        address id
-    ) internal view returns (bool) {
-        return self.existingMatches[id].pos > 0;
-    }
-
-    /**
-     * Check whether a match is pending and private or not.
-     * @param self Matchmaking structure to use.
-     * @param id The id of the match to check.
-     */
-    function isPrivatePending(
-        Matches storage self,
-        address id
-    ) internal view returns (bool) {
-        return
-            self.existingMatches[id].game.phase == PENDING &&
-            self.existingMatches[id].game.flags == ACCESSIBILITY;
-    }
-
-    /**
-     * Check whether a match is already started or not.
-     * @param self Matchmaking structure to use.
-     * @param id The id of the match to check.
-     */
-    function isStarted(
-        Matches storage self,
-        address id
-    ) internal view returns (bool) {
-        return
-            self.existingMatches[id].game.phase !=
-            (PENDING | NOT_CREATED | GAME_END);
-    }
-
-    /**
-     * End an already started match.
-     * @param self Matchmaking structure to use.
-     * @param id The id of the match to end.
-     * @return True if the match is successfully ended, or false if the match
+     * @param id The id of the match to delete.
+     * @return True if the match is successfully deleted, or false if the match
      * was not already started.
      */
-    function endMatch(
-        Matches storage self,
+    function deleteMatch(
+        MatchRegister storage self,
         address id
     ) internal returns (bool) {
-        if (!isStarted(self, id)) {
+        if (self.existingMatches[id].game.phase == (PENDING | NOT_CREATED)) {
+            // the match is not started
             return false;
         }
 
@@ -190,7 +165,7 @@ library MatchRegister {
      * @param self Matchmaking structure to use.
      */
     function nPendingMatches(
-        Matches storage self
+        MatchRegister storage self
     ) internal view returns (uint) {
         return self.pendingMatches.length;
     }
@@ -203,9 +178,9 @@ library MatchRegister {
      * nPendingMatches).
      */
     function getPending(
-        Matches storage self,
+        MatchRegister storage self,
         uint i
-    ) internal view returns (address, Game.State storage) {
+    ) internal view returns (address, Game storage) {
         address addr = self.pendingMatches[i];
         return (addr, self.existingMatches[addr].game);
     }

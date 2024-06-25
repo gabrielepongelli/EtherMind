@@ -5,7 +5,7 @@ library Configs {
     /**
      * @dev Config parameters.
      */
-    uint256 internal constant N_TURNS = 4;
+    uint256 internal constant N_ROUNDS = 4;
     uint256 internal constant N_GUESSES = 12;
     uint256 internal constant EXTRA_POINTS = 6;
     uint256 internal constant WAIT_UNTIL = 90; //holdoff time to give challenger time to dispute

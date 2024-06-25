@@ -3,24 +3,26 @@ pragma solidity ^0.8.24;
 
 /**
  * Bits:
- * - [b0] ACCESSIBILITY: match accessibility: 0 = public, 1 = private
- * - [b1] LAST_STAKE: who make the last stake proposal: 0 = creator, 1 = challenger
+ * - [b0] IS_PRIVATE: is the current match private: 0 = no, 1 = yes
+ * - [b1] CHALLENGER_PROPOSED_STAKE: is the last stake proposal made by the 
+ *                                   challenger: 0 = no, 1 = yes
  * - [b2] CREATOR_PAYED: has the creator already payed: 0 = no, 1 = yes
  * - [b3] CHALLENGER_PAYED: has the challenger already payed: 0 = no, 1 = yes
- * - [b4] WHOIS: who is currently the CodeMaker: 0 = creator, 1 = challenger
- * - [b5] AFK_CHECK: is afk check on: 0 = no, 1 = yes
+ * - [b4] IS_CHALLENGER_CODEMAKER: is the challenger currently the CodeMaker: 
+ *                                 0 = no, 1 = yes
+ * - [b5] AFK_CHECK_ACTIVE: is the afk check active: 0 = no, 1 = yes
  * - [b6] CB_WAITING: are we waiting for the codebreaker: 0 = no, 1 = yes
  * - [b7] CM_WAITING: are we waiting for the codemaker: 0 = no, 1 = yes
  */
 type Flags is uint8;
 using {_combine as |, _isSet as ==, _isNotSet as !=, _set as +, _reset as -} for Flags global;
 
-Flags constant ACCESSIBILITY = Flags.wrap(1);
-Flags constant LAST_STAKE = Flags.wrap(1 << 1);
+Flags constant IS_PRIVATE = Flags.wrap(1);
+Flags constant CHALLENGER_PROPOSED_STAKE = Flags.wrap(1 << 1);
 Flags constant CREATOR_PAYED = Flags.wrap(1 << 2);
 Flags constant CHALLENGER_PAYED = Flags.wrap(1 << 3);
-Flags constant WHOIS = Flags.wrap(1 << 4);
-Flags constant AFK_CHECK = Flags.wrap(1 << 5);
+Flags constant IS_CHALLENGER_CODEMAKER = Flags.wrap(1 << 4);
+Flags constant AFK_CHECK_ACTIVE = Flags.wrap(1 << 5);
 Flags constant CB_WAITING = Flags.wrap(1 << 6);
 Flags constant CM_WAITING = Flags.wrap(1 << 7);
 

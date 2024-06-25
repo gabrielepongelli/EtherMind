@@ -5,89 +5,93 @@ import "./Configs.sol";
 import "./Code.sol";
 import "./Flags.sol";
 import "./GamePhase.sol";
+import "./Utils.sol";
 
-library Game {
-    /**
-     * Internal state of a game.
-     */
-    struct State {
-        address payable creator; // Player who created the match
-        address payable challenger; // Player who joined the match
-        uint256 stake; // Money proposed for the game stake (in wei)
-        Flags flags; // Array of flags
-        Phase phase; // Phase in which the game is currently in.
-        bytes32 hashedSolution; //uploaded hash
-        Code solution;
-        uint256 afkBlockTimestamp; //to keep track of the maximum ammount of time a player can be afk
-        Code[] movesHistory;
-        Feedback[] feedbackHistory; //in theory the link between movesHistory and feedback History is implicit...depend on n of feedback and position (ex. mH[1]=fH[1])
-        uint round;
-        uint creatorScore; //poins counter, all slots in storage are implicitly zero until set to something else.
-        uint challengerScore;
-        uint256 holdOffBlockTimestamp; //time to start dispute
-    }
+/**
+ * State of a game.
+ */
+struct Game {
+    address creator; // Player who created the match
+    uint creatorScore; // Score of the creator
+    address challenger; // Player who joined the match
+    uint challengerScore; // Score of the challenger
+    uint256 stake; // Money proposed for the game stake (in wei)
+    Flags flags; // Array of flags
+    Phase phase; // Phase in which the game is currently in.
+    bytes32 hashedSolution; // Hash of the solution updated by the CodeMaker
+    Code solution; // Solution updated by the CodeMaker
+    Code[] guesses; // Guesses attempted by the CodeBreaker
+    Feedback[] feedbacks; // Feedbacks notified by the CodeMaker
+    uint round; // Number of round currently played
+    uint256 disputeBlock; // Last block in which a player can start a dispute
+    uint256 afkBlock; // Last block in which a player can be afk
+}
+using {
+    GameOp.newStake,
+    GameOp.newPayment,
+    GameOp.hasAlreadyPayed,
+    GameOp.startAfkTimer,
+    GameOp.stopAfkTimer,
+    GameOp.isAfkTimerStarted,
+    GameOp.canStartAfkTimer,
+    GameOp.isAfkTimerEnded,
+    GameOp.updateScores,
+    GameOp.verifyFeedbacks,
+    GameOp.isCodeBreaker,
+    GameOp.codeBreaker,
+    GameOp.isCodeMaker,
+    GameOp.codeMaker,
+    GameOp.isCodeMakerWaited,
+    GameOp.isCodeBreakerWaited,
+    GameOp.submitSolutionHash,
+    GameOp.submitGuess,
+    GameOp.submitFeedback,
+    GameOp.submitFinalSolution,
+    GameOp.startNewRound,
+    GameOp.isRoundEnded,
+    GameOp.endGame,
+    GameOp.winner,
+    GameOp.startDisputeTimer,
+    GameOp.isDisputeTimerEnded
+} for Game global;
 
+library GameOp {
     /**
-     * Initialize a game state to an initial state.
-     * @param self The game state to initialize.
-     * @param creator The player who created the game.
-     * @param challenger The player who joined the game.
-     * @param isPublic Says whether the game public (true) or private (false).
-     */
-    function initState(
-        State storage self,
-        address creator,
-        address challenger,
-        bool isPublic
-    ) internal {
-        self.creator = payable(creator);
-        self.challenger = payable(challenger);
-        self.stake = 0;
-        self.phase = NOT_CREATED;
-        self.flags = isPublic ? self.flags : self.flags + ACCESSIBILITY;
-    }
-
-    /**
-     * Check whether the specified player is the same that proposed the current
-     * stake.
-     * @param self The state of the game to modify.
-     * @param player The player to check.
-     */
-    function isSameProposer(
-        State storage self,
-        address player
-    ) internal view returns (bool) {
-        return
-            (player == self.creator && self.flags != LAST_STAKE) ||
-            (player == self.challenger && self.flags == LAST_STAKE);
-    }
-
-    /**
-     * Set a new stake proposal.
-     * @param self The state of the game to modify.
+     * Set a new stake proposal. If with this new proposal the stake is fixed,
+     * the game goes in the next phase.
+     * @param self The game to use.
      * @param player The player that made the proposal.
      * @param stake The amount of wei proposed.
      */
-    function setNewStake(
-        State storage self,
+    function newStake(
+        Game storage self,
         address player,
         uint256 stake
     ) internal {
-        self.stake = stake;
-        self.flags = player == self.creator
-            ? self.flags - LAST_STAKE
-            : self.flags + LAST_STAKE;
+        bool isSameProposer = (player == self.creator &&
+            self.flags != CHALLENGER_PROPOSED_STAKE) ||
+            (player == self.challenger &&
+                self.flags == CHALLENGER_PROPOSED_STAKE);
+
+        if (!isSameProposer && self.stake == stake) {
+            self.phase = STAKE_PAYMENT;
+        } else {
+            self.stake = stake;
+            self.flags = player == self.creator
+                ? self.flags - CHALLENGER_PROPOSED_STAKE
+                : self.flags + CHALLENGER_PROPOSED_STAKE;
+        }
     }
 
     /**
      * Register a new stake payment by the specified player.
-     * @param self The state of the game to modify.
+     * @param self The game to use.
      * @param player The player that made the payment.
      * @return True if both the players have payed after this last payment,
      * false otherwise.
      */
-    function newStakePayment(
-        State storage self,
+    function newPayment(
+        Game storage self,
         address player
     ) internal returns (bool) {
         self.flags = player == self.creator
@@ -99,11 +103,11 @@ library Game {
 
     /**
      * Check whether the specified player has already payed the stake or not.
-     * @param self The state of the game to modify.
+     * @param self The game to use.
      * @param player The player to check.
      */
     function hasAlreadyPayed(
-        State storage self,
+        Game storage self,
         address player
     ) internal view returns (bool) {
         return
@@ -111,135 +115,287 @@ library Game {
             (player == self.creator ? CREATOR_PAYED : CHALLENGER_PAYED);
     }
 
-    function startAfkCheck(State storage self, uint256 blockNumber) internal {
-        self.flags = self.flags + AFK_CHECK;
-        self.afkBlockTimestamp = blockNumber;
+    /**
+     * Start the AFK timer.
+     * @param self The game to use.
+     * @param blockNumber The number of the current block.
+     */
+    function startAfkTimer(Game storage self, uint256 blockNumber) internal {
+        self.flags = self.flags + AFK_CHECK_ACTIVE;
+        self.afkBlock = blockNumber;
     }
 
-    function stopAfkCheck(State storage self) internal {
-        self.flags = self.flags - AFK_CHECK;
+    /**
+     * Stop the AFK timer.
+     * @param self The game to use.
+     */
+    function stopAfkTimer(Game storage self) internal {
+        self.flags = self.flags - AFK_CHECK_ACTIVE;
     }
 
-    function isAfkCheckActive(State memory self) internal pure returns (bool) {
-        return self.flags == AFK_CHECK;
+    /**
+     * Check whether the AFK timer is already started or not.
+     * @param self The game to use.
+     */
+    function isAfkTimerStarted(Game storage self) internal view returns (bool) {
+        return self.flags == AFK_CHECK_ACTIVE;
     }
 
-    //the number of guesses that the CodeBreaker needed to crack thesecret code is the number of points awarded to the other player, the CodeMaker.
-    //If theCodeBreaker does not end up breaking the code, K extra points are awarded to the CodeMaker.
-    function updateScores(State storage self) internal {
-        if (self.movesHistory.length == Configs.N_GUESSES) {
-            // ran out of guesses give extra points
-            if (self.flags == WHOIS) {
-                self.challengerScore += self.movesHistory.length;
-                self.challengerScore += Configs.EXTRA_POINTS;
-            } else {
-                self.creatorScore += self.movesHistory.length;
-                self.creatorScore += Configs.EXTRA_POINTS;
-            }
+    /**
+     * Check whether the AFK timer has passed its end threshold or not.
+     * @param self The game to use.
+     * @param blockNumber The number of the current block.
+     */
+    function isAfkTimerEnded(
+        Game storage self,
+        uint256 blockNumber
+    ) internal view returns (bool) {
+        return
+            self.afkBlock + (Configs.AFK_MAX / Configs.AVG_BLOCK_TIME) <
+            blockNumber;
+    }
+
+    /**
+     * Check whether a player can start the AFK timer or not.
+     * @param self The game to use.
+     * @param player The player to check.
+     */
+    function canStartAfkTimer(
+        Game storage self,
+        address player
+    ) internal view returns (bool) {
+        return
+            (self.isCodeMaker(player) && self.flags == CB_WAITING) ||
+            (self.isCodeBreaker(player) && self.flags == CM_WAITING);
+    }
+
+    /**
+     * Update the scores of the players.
+     * @param self The game to use.
+     */
+    function updateScores(Game storage self) internal {
+        // if the last feedback is not the feedback representing a completely
+        // correct guess assign extra points
+        bool extraPoints = !self
+            .feedbacks[self.feedbacks.length - 1]
+            .isSuccess();
+
+        if (self.isCodeMaker(self.challenger)) {
+            self.challengerScore += extraPoints
+                ? self.guesses.length + Configs.EXTRA_POINTS
+                : self.guesses.length;
         } else {
-            // give codemaker points
-            if (self.flags == WHOIS) {
-                self.challengerScore += self.movesHistory.length;
-            } else {
-                self.creatorScore += self.movesHistory.length;
-            }
+            self.creatorScore += extraPoints
+                ? self.guesses.length + Configs.EXTRA_POINTS
+                : self.guesses.length;
         }
     }
 
-    // Function to verify the feedback consistency
-    function verifyFeedback(State memory self) internal pure returns (bool) {
-        for (uint256 i = 0; i < self.movesHistory.length; i++) {
-            if (
-                !self.feedbackHistory[i].verify(
-                    self.solution,
-                    self.movesHistory[i]
-                )
-            ) {
+    /**
+     * Check if all the feedbacks submitted by the CodeMaker are correct.
+     * @param self The game to use.
+     */
+    function verifyFeedbacks(Game storage self) internal view returns (bool) {
+        for (uint256 i = 0; i < self.guesses.length; i++) {
+            if (!self.feedbacks[i].verify(self.solution, self.guesses[i])) {
                 return false;
             }
         }
         return true;
     }
 
+    /**
+     * Check whether the player specified is the CodeBreaker or not.
+     * @param self The game to use.
+     * @param player The player to check.
+     */
     function isCodeBreaker(
-        State memory self,
+        Game storage self,
         address player
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         return
-            (self.flags == WHOIS && (self.creator == player)) ||
-            (self.flags != WHOIS && (self.challenger == player));
+            (self.flags == IS_CHALLENGER_CODEMAKER &&
+                (self.creator == player)) ||
+            (self.flags != IS_CHALLENGER_CODEMAKER &&
+                (self.challenger == player));
     }
 
-    function getCodeBreaker(State memory self) internal pure returns (address) {
+    /**
+     * Get the CodeBreaker.
+     * @param self The game to use.
+     */
+    function codeBreaker(Game storage self) internal view returns (address) {
         return
-            isCodeBreaker(self, self.creator) ? self.creator : self.challenger;
+            self.isCodeBreaker(self.creator) ? self.creator : self.challenger;
     }
 
+    /**
+     * Check whether the player specified is the CodeMaker or not.
+     * @param self The game to use.
+     * @param player The player to check.
+     */
     function isCodeMaker(
-        State memory self,
+        Game storage self,
         address player
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         return
-            (self.flags != WHOIS && (self.creator == player)) ||
-            (self.flags == WHOIS && (self.challenger == player));
+            (self.flags != IS_CHALLENGER_CODEMAKER &&
+                (self.creator == player)) ||
+            (self.flags == IS_CHALLENGER_CODEMAKER &&
+                (self.challenger == player));
     }
 
-    function getCodeMaker(State memory self) internal pure returns (address) {
-        return isCodeMaker(self, self.creator) ? self.creator : self.challenger;
+    /**
+     * Get the CodeMaker.
+     * @param self The game to use.
+     */
+    function codeMaker(Game storage self) internal view returns (address) {
+        return self.isCodeMaker(self.creator) ? self.creator : self.challenger;
     }
 
-    function invertRoles(State storage self) internal {
-        self.flags = self.flags == WHOIS
-            ? self.flags - WHOIS
-            : self.flags + WHOIS;
+    /**
+     * Check whether the CodeMaker is being waited by the CodeBreaker or not.
+     * @param self The game to use.
+     */
+    function isCodeMakerWaited(Game storage self) internal view returns (bool) {
+        return self.flags == CM_WAITING;
     }
 
-    function canPlayerWait(
-        State memory self,
-        address player
-    ) internal pure returns (bool) {
-        return
-            (isCodeMaker(self, player) && self.flags == CB_WAITING) ||
-            (isCodeBreaker(self, player) && self.flags == CM_WAITING);
+    /**
+     * Check whether the CodeBreaker is being waited by the CodeMaker or not.
+     * @param self The game to use.
+     */
+    function isCodeBreakerWaited(
+        Game storage self
+    ) internal view returns (bool) {
+        return self.flags == CB_WAITING;
     }
 
-    function startNewRound(
-        State storage self,
-        bytes32 hashedSolution
+    /**
+     * Submit a new solution hash.
+     * @param self The game to use.
+     * @param solutionHash The new solution hash.
+     */
+    function submitSolutionHash(
+        Game storage self,
+        bytes32 solutionHash
     ) internal {
-        // reset history and round data
-        delete self.movesHistory;
-        delete self.feedbackHistory;
-        self.solution = CodeOp.newCode(0, 0, 0, 0);
+        // reset the old guesses and feedbacks since they were relative to the
+        // old solution
+        delete self.guesses;
+        delete self.feedbacks;
+
+        self.hashedSolution = solutionHash;
+        self.flags = (self.flags - CM_WAITING) + CB_WAITING;
+        self.phase = GUESS_SUBMISSION;
+    }
+
+    /**
+     * Submit a new guess.
+     * @param self The game to use.
+     * @param guess The new guess.
+     */
+    function submitGuess(Game storage self, Code guess) internal {
+        self.guesses.push(guess);
+        self.flags = (self.flags - CB_WAITING) + CM_WAITING;
+        self.phase = FEEDBACK_SUBMISSION;
+    }
+
+    /**
+     * Submit a new feedback.
+     * @param self The game to use.
+     * @param feedback The new feedback.
+     */
+    function submitFeedback(Game storage self, Feedback feedback) internal {
+        self.feedbacks.push(feedback);
+
+        // if is round end reached
+        if (
+            (self.guesses.length == Configs.N_GUESSES) ||
+            (self.feedbacks[self.feedbacks.length - 1].isSuccess())
+        ) {
+            // we do not reset the CM_WAITING flag because now it has to send
+            // the code
+            self.phase = ROUND_END;
+        } else {
+            self.phase = GUESS_SUBMISSION;
+            self.flags = (self.flags - CM_WAITING) + CB_WAITING;
+        }
+    }
+
+    /**
+     * Submit the final solution.
+     * @param self The game to use.
+     * @param solution The solution.
+     * @return True if the final solution matches with the hash submitted at
+     * the beginning of the round, false otherwise.
+     */
+    function submitFinalSolution(
+        Game storage self,
+        Code solution
+    ) internal returns (bool) {
+        self.solution = solution;
+        self.flags = (self.flags - CM_WAITING) + CB_WAITING;
+        return self.hashedSolution == solution.hashCode();
+    }
+
+    /**
+     * Start a new round.
+     * @param self The game to use.
+     * @return A couple of addresses, where the first is the address of the
+     * CodeMaker, and the second is the address of the CodeBreaker.
+     */
+    function startNewRound(
+        Game storage self
+    ) internal returns (address, address) {
+        if (self.phase == STAKE_PAYMENT) {
+            // randomly choose the CodeMaker
+            self.flags = (Utils.rand(1) % 2 == 0)
+                ? self.flags
+                : self.flags + IS_CHALLENGER_CODEMAKER;
+        } else {
+            // swap CodeMaker and CodeBreaker
+            self.flags = self.flags == IS_CHALLENGER_CODEMAKER
+                ? self.flags - IS_CHALLENGER_CODEMAKER
+                : self.flags + IS_CHALLENGER_CODEMAKER;
+        }
 
         // new game status
-        self.phase = ROUND_PLAYING;
-        self.flags = self.flags + CB_WAITING;
-        self.hashedSolution = hashedSolution;
+        self.phase = ROUND_START;
+        self.flags = self.flags + CM_WAITING;
+        self.round++;
+
+        return (self.codeMaker(), self.codeBreaker());
     }
 
-    function submitGuess(State storage self, Code guess) internal {
-        self.movesHistory.push(guess);
-        self.flags = (self.flags - CB_WAITING) + CM_WAITING;
-    }
-
-    function roundEndReached(State memory self) internal pure returns (bool) {
-        return
-            (self.movesHistory.length == Configs.N_GUESSES) ||
-            (self.feedbackHistory[self.feedbackHistory.length - 1].isSuccess());
-    }
-
-    function isRoundEnded(State memory self) internal pure returns (bool) {
+    /**
+     * Check if the round is already ended.
+     * @param self The game to use.
+     */
+    function isRoundEnded(Game storage self) internal view returns (bool) {
         return self.phase == ROUND_END;
     }
 
-    function submitFeedback(State storage self, Feedback feedback) internal {
-        self.feedbackHistory.push(feedback);
-        self.flags = self.flags - CM_WAITING;
-        self.phase = roundEndReached(self) ? ROUND_END : ROUND_PLAYING;
+    /**
+     * Try to end the game.
+     * @param self The game to use.
+     * @return True if the game is ended, false otherwise.
+     */
+    function endGame(Game storage self) internal returns (bool) {
+        if (self.round == Configs.N_ROUNDS) {
+            // if this is the last round, end the game
+            self.phase = GAME_END;
+            return true;
+        }
+
+        return false;
     }
 
-    function getWinner(State memory self) internal pure returns (address) {
+    /**
+     * Get the winner of the game.
+     * @param self The game to use.
+     */
+    function winner(Game storage self) internal view returns (address) {
         if (self.creatorScore > self.challengerScore) {
             return self.creator;
         } else if (self.creatorScore < self.challengerScore) {
@@ -249,7 +405,29 @@ library Game {
         }
     }
 
-    function isLastRound(State memory self) internal pure returns (bool) {
-        return self.round == Configs.N_TURNS;
+    /**
+     * Start the dispute timer.
+     * @param self The game to use.
+     * @param blockNumber The number of the current block.
+     */
+    function startDisputeTimer(
+        Game storage self,
+        uint256 blockNumber
+    ) internal {
+        self.disputeBlock =
+            blockNumber +
+            (Configs.WAIT_UNTIL / Configs.AVG_BLOCK_TIME);
+    }
+
+    /**
+     * Check whether the dispute timer has passed its end threshold or not.
+     * @param self The game to use.
+     * @param blockNumber The number of the current block.
+     */
+    function isDisputeTimerEnded(
+        Game storage self,
+        uint256 blockNumber
+    ) internal view returns (bool) {
+        return self.disputeBlock > blockNumber;
     }
 }
