@@ -77,7 +77,7 @@ library CodeOp {
      * @param code The code to check.
      */
     function checkFromat(Code code) internal pure returns (bool) {
-        // all guessable colors go from 0 to COLOR_VALUE_MAX (6 colors in 4 positions)
+        // all guessable colors go from 0 to N_COLORS (6 colors in 4 positions)
         return
             getColor(code, 0) <= N_COLORS - 1 &&
             getColor(code, 1) <= N_COLORS - 1 &&
