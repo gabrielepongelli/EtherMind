@@ -1,31 +1,9 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getEvent, getMatchFromEvent } from "./utils";
+import { getEvent, untilCreate, untilJoin, phases } from "./utils";
 
 describe("Stake decision", function () {
-    async function untilCreate() {
-        // deploy game platform
-        const EtherMind = await ethers.getContractFactory("EtherMind");
-        const game = await EtherMind.deploy();
-        const [creator, challenger, otherPlayer] = await ethers.getSigners();
-
-        // create match
-        const tx = await game.createMatch(challenger.address);
-        const matchId = await getMatchFromEvent(tx);
-
-        return { game, creator, challenger, otherPlayer, matchId };
-    }
-
-    async function untilJoin() {
-        const { game, creator, challenger, otherPlayer, matchId } = await untilCreate();
-
-        const stakeProposal = 20;
-        await game.connect(challenger).joinMatch(matchId, stakeProposal);
-
-        return { game, creator, challenger, otherPlayer, matchId, stakeProposal };
-    }
-
     describe("Proposal on join", function () {
         describe("Events", function () {
             it("Should emit an event when a match is joined signaling the new stake proposal", async function () {
@@ -57,10 +35,17 @@ describe("Stake decision", function () {
                 await expect(game.stakeProposal(invalidMatchId, 10)).to.be.revertedWith("The match specified does not exist");
             });
 
-            it("Should fail if called on a pending match", async function () {
-                const { game, matchId } = await loadFixture(untilCreate);
+            it("Should fail if called on a match that is in the wrong phase", async function () {
+                for (const phaseFn of phases) {
+                    if (phaseFn == untilJoin) {
+                        return;
+                    }
 
-                await expect(game.stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    const { game, challenger, matchId } = await loadFixture(phaseFn);
+
+                    await expect(game.stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.connect(challenger).stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                }
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
@@ -98,6 +83,7 @@ describe("Stake decision", function () {
 
                 await expect(game.stakeProposal(matchId, stakeProposal)).not.to.be.reverted;
 
+                await expect(game.stakeProposal(matchId, stakeProposal)).to.be.revertedWith("Operation not permitted in this phase of the game");
                 await expect(game.connect(challenger).stakeProposal(matchId, stakeProposal)).to.be.revertedWith("Operation not permitted in this phase of the game");
             });
         });
