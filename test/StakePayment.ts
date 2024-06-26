@@ -1,7 +1,8 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getEvent, untilStakeDecision, phases } from "./utils";
+import { getEvent } from "./utils/utils";
+import { untilStakeDecision, phases } from "./utils/phases";
 
 describe("Stake payment", function () {
     describe("Validation", function () {

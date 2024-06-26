@@ -1,7 +1,8 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getEvent, getMatchFromEvent, untilDeploy } from "./utils";
+import { getEvent, getMatchFromEvent } from "./utils/utils";
+import { untilDeploy } from "./utils/phases";
 
 describe("Matchmaking", function () {
     describe("Creation", function () {
