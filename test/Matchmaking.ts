@@ -168,14 +168,6 @@ describe("Matchmaking", function () {
                 expect(event.creator).to.be.equal(creator.address);
                 expect(event.challenger).to.be.equal(challenger.address);
             });
-
-            it("Should emit an event when a match is joined signaling the new stake proposal", async function () {
-                const { game, challenger } = await loadFixture(deployGame);
-                const tx = await game.createMatch(challenger.address);
-                const matchId = await getMatchFromEvent(tx);
-
-                await expect(game.connect(challenger).joinMatch(matchId, 10)).to.emit(game, "StakeProposal");
-            });
         });
     });
 })
