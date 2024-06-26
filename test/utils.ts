@@ -50,13 +50,16 @@ export const getMatchFromEvent = async (tx: ContractTransactionResponse): Promis
  * @returns an object of this form:
  * {
  *      game: the deployed contract
+ *      creator (default), challenger, otherPlayer: three different accounts
  * }
  */
 export const untilDeploy = async (): Promise<any> => {
+    const [creator, challenger, otherPlayer] = await ethers.getSigners();
+
     const EtherMind = await ethers.getContractFactory("EtherMind");
     const game = await EtherMind.deploy();
 
-    return { game };
+    return { game, creator, challenger, otherPlayer };
 }
 
 /**
@@ -64,7 +67,7 @@ export const untilDeploy = async (): Promise<any> => {
  * @returns an object of this form:
  * {
  *      game: the deployed contract
- *      creator: the account that created the match
+ *      creator (default): the account that created the match
  *      challenger: the account that can join the new match
  *      otherPlayer: another account different from the previous ones
  *      matchId: the id of the new match
@@ -72,12 +75,6 @@ export const untilDeploy = async (): Promise<any> => {
  */
 export const untilCreate = async (): Promise<any> => {
     const data = await untilDeploy();
-
-    const [creator, challenger, otherPlayer] = await ethers.getSigners();
-    data.creator = creator;
-    data.challenger = challenger;
-    data.otherPlayer = otherPlayer;
-
     const tx = await data.game.createMatch(data.challenger.address);
     const matchId = await getMatchFromEvent(tx);
     data.matchId = matchId;
@@ -90,7 +87,7 @@ export const untilCreate = async (): Promise<any> => {
  * @returns an object of this form:
  * {
  *      game: the deployed contract
- *      creator: the account that created the match
+ *      creator (default): the account that created the match
  *      challenger: the account that joined the new match
  *      otherPlayer: another account different from the previous ones
  *      matchId: the id of the match
@@ -113,7 +110,7 @@ export const untilJoin = async (): Promise<any> => {
  * @returns an object of this form:
  * {
  *      game: the deployed contract
- *      creator: the account that created the match
+ *      creator (default): the account that created the match
  *      challenger: the account that joined the new match
  *      otherPlayer: another account different from the previous ones
  *      matchId: the id of the match
