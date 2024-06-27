@@ -1,14 +1,14 @@
 import { ethers } from 'ethers';
 import CryptoJS from 'crypto-js';
 
-interface Move{
+interface Move {
     pos1: number;
     pos2: number;
     pos3: number;
     pos4: number;
 }
 
-interface Feedb{
+interface Feedb {
     wrong_pos: number;
     correct: number;
 }
@@ -19,9 +19,9 @@ const provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/${infu
 // Contract details
 const contractAddress = '0x18E1039F024b73aB3B45377A127662104D67Cb96';
 //In order to communicate with the Contract on-chain, must know what methods are available and how to encode and decode the data
-const contractABI = 
-    [{"inputs":[{"internalType":"uint256","name":"_unlockTime","type":"uint256"}],"stateMutability":"payable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"when","type":"uint256"}],"name":"Withdrawal","type":"event"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"unlockTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}]
-;
+const contractABI =
+    [{ "inputs": [{ "internalType": "uint256", "name": "_unlockTime", "type": "uint256" }], "stateMutability": "payable", "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }, { "indexed": false, "internalType": "uint256", "name": "when", "type": "uint256" }], "name": "Withdrawal", "type": "event" }, { "inputs": [], "name": "owner", "outputs": [{ "internalType": "address payable", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "unlockTime", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }]
+    ;
 
 //this is if you need to get payed
 const privateKey = '7f0a2326943793a9f62333715e771ee1b42a643289299f8e927bd15fd98fb02b';
@@ -42,76 +42,193 @@ async function withdraw() {
     }
 }
 
-
 //if event happened, display on console
-contract.on('DepositFeedback', (address, feedback, Mid) => {
-    console.log(`DepositFeedback event: by = ${address}, guess = ${feedback}, Mid = ${Mid}`);
-
-});
-
-contract.on('EndOfGuesses', (address, Mid) => {
-    console.log(`EndOfGuesses event: by = ${address}, Mid = ${Mid}`);
-
-});
-
-//if event happened, display on console
-contract.on('DepositHashSolution', (address, guess, Mid) => {
-    console.log(`DepositHashSolution event: by = ${address}, guess = ${guess}, Mid = ${Mid}`);
+contract.on('MatchCreated', (address,Mid) => {
+    console.log(`MatchCreated event: Mid = ${Mid}, by = ${address}`);
 
 });
 
 
 //if event happened, display on console
-contract.on('DepositHashSolution', (address, hash, Mid) => {
-    console.log(`DepositHashSolution event: by = ${address}, hash = ${hash}, Mid = ${Mid}`);
+contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
+    console.log(`MatchStarted event: Mid = ${Mid}, by = ${addressCreator}, challenger = ${addressChallenger}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('StakeProposal', (Mid, proposal) => {
+    console.log(`StakeProposal event: Mid = ${Mid}, stake = ${proposal}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('StakeFixed', (Mid, stake) => {
+    console.log(`StakeFixed event: Mid = ${Mid}, stake = ${stake}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('StakePayed', (Mid, player) => {
+    console.log(`StakePayed event: Mid = ${Mid}, address = ${player}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('GameStarted', (Mid) => {
+    console.log(`GameStarted event: Mid = ${Mid}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('RoundStarted', (Mid, round, codeMaddress, codeBaddress) => {
+    console.log(`RoundStarted event: Mid = ${Mid}, n rounds = ${round}, codemaster = ${codeMaddress}, codebreaker = ${codeBaddress}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('GuessSubmitted', (Mid, address, guess) => {
+    console.log(`GuessSubmitted event: Mid = ${Mid}, by = ${address}, guess = ${guess}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('FeedbackSubmitted', (Mid, address, feedback) => {
+    console.log(`FeedbackSubmitted event: Mid = ${Mid}, by = ${address}, clue = ${feedback}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('SolutionHashSubmitted', (Mid, address) => {
+    console.log(`SolutionHashSubmitted event: Mid = ${Mid}, by = ${address}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('SolutionSubmitted', (Mid, address, solution) => {
+    console.log(`SolutionSubmitted event: Mid = ${Mid}, by = ${address}, solution = ${solution}`);
+
+});
+
+
+//if event happened, display on console
+contract.on('ScoresUpdated', (Mid, crsore, chscore) => {
+    console.log(`ScoresUpdated event: Mid = ${Mid}, creator score = ${crsore}, challenger score = ${chscore}`);
 
 });
 
 //if event happened, display on console
-contract.on('AFKCheckStarted', (address, timestamp, Mid) => {
-    console.log(`AFKCheckStarted event: by = ${address}, reason for punishment = ${timestamp}, Mid = ${Mid}`);
+contract.on('AFKCheckStarted', (Mid, address, timestamp) => {
+    console.log(`AFKCheckStarted event:  Mid = ${Mid}, by = ${address}, timestamp = ${timestamp}`);
 
 });
 
-//if event happened, display on console
-contract.on('AFKCheckStarted', (address, timestamp, Mid) => {
-    console.log(`AFKCheckStarted event: by = ${address}, reason for punishment = ${timestamp}, Mid = ${Mid}`);
 
+//if event happened, display on console
+contract.on('GameEnded', (Mid) => {
+    console.log(`GameEnded event: Mid = ${Mid}`);
+    //TODO say depending on the returned points who won
 });
 
+
 //if event happened, display on console
-contract.on('EndOfMatch', (address, points_host, points_challenger, currentStake, Mid) => {
-    console.log(`EndOfMatch event: by = ${address}, points host = ${points_host}, points challenger = ${points_challenger}, stake = ${currentStake}, Mid = ${Mid}`);
+contract.on('MatchEnded', (Mid) => {
+    console.log(`MatchEnded event: Mid = ${Mid}`);
     //TODO say depending on the returned points who won
 });
 
 //if event happened, display on console
-contract.on('EndOfRound', (address, solution, Mid) => {
-    console.log(`EndOfRound event: by = ${address}, solution = ${solution}, Mid = ${Mid}`);
+contract.on('RoundEnded', (Mid, nOfRounds) => {
+    console.log(`RoundEnded event: Mid = ${Mid}, rounds = ${nOfRounds}`);
 
 });
 
 //if event happened, display on console
-contract.on('PunishmentDispensed', (address, punishment, Mid) => {
-    console.log(`PunishmentDispensed event: by = ${address}, reason for punishment = ${punishment}, Mid = ${Mid}`);
+contract.on('PlayerPunished', (Mid, address, punishment) => {
+    console.log(`PlayerPunished event:  Mid = ${Mid}, by = ${address}, reason for punishment = ${punishment}`);
 
 });
 
 //if event happened, display on console
-contract.on('RewardDispensed', (address, points_host, points_challenger, currentStake, Mid) => {
-    console.log(`RewardDispensed event: by = ${address}, points host = ${points_host}, points challenger = ${points_challenger}, stake = ${currentStake}, Mid = ${Mid}`);
+contract.on('RewardDispensed', (Mid, address, currentStake) => {
+    console.log(`RewardDispensed event: Mid = ${Mid}, by = ${address}, stake = ${currentStake}`);
     //TODO say depending on the returned points who won
 });
 
-async function uploadHash(matchID: number, SecretCode: string) {
-    //hash secret code, convert it to string using Hex encoder
-    let generated_signature = CryptoJS.SHA256(SecretCode).toString(CryptoJS.enc.Hex); 
+
+//if event happened, display on console
+contract.on('Failure', (message) => {
+    console.log(`Failure event: Mid = ${message}`);
+    //TODO say depending on the returned points who won
+});
+
+
+
+//now the functions
+
+
+
+async function NewMatch(otherPlayerAddress: string) {
+    // Validate the address
+    if (!ethers.isAddress(otherPlayerAddress)) {
+        throw new Error('Invalid otherplayer address');
+    }
     try {
-        const tx = await contract.uploadCodeHash(matchID,generated_signature);
+        const tx = await contract.createMatch(otherPlayerAddress);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
-       
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+async function joinMatch(Address: string, stake: bigint) {
+    try {
+        const tx = await contract.joinMatch(Address,stake);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+async function proposeStake(Address: string, stake: bigint) {
+    try {
+        const tx = await contract.stakeProposal(Address,stake);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+
+async function uploadHash(matchID: string, SecretCode: string) {
+    //hash secret code, convert it to string using Hex encoder
+    let generated_signature = CryptoJS.SHA256(SecretCode).toString(CryptoJS.enc.Hex);
+    try {
+        const tx = await contract.newSolutionHash(matchID, generated_signature);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
     } catch (error) {
         console.error('Error:', error);
     }
@@ -119,11 +236,11 @@ async function uploadHash(matchID: number, SecretCode: string) {
 
 async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
-        const tx = await contract.makeGuess(matchID,guess);
+        const tx = await contract.newGuess(matchID, guess);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
-       
+
     } catch (error) {
         console.error('Error:', error);
     }
@@ -133,11 +250,65 @@ async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CAUSE PRO
 
 async function uploadFeedback(matchID: number, feedback: Feedb) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
-        const tx = await contract.giveFeedback(matchID,feedback);
+        const tx = await contract.newFeedback(matchID, feedback);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
-       
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+async function sendSolution(matchID: number, solution: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+    try {
+        const tx = await contract.uploadSolution(matchID, solution);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+
+async function sendDispute(matchID: number) {
+    try {
+        const tx = await contract.dispute(matchID);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+
+async function AFKcheck(matchID: number) {
+    try {
+        const tx = await contract.startAfkCheck(matchID);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
+async function HaltGame(matchID: number) {
+    try {
+        const tx = await contract.stopMatchForAfk(matchID);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
     } catch (error) {
         console.error('Error:', error);
     }
@@ -150,68 +321,11 @@ async function checkWhoWinner(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN T
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
-       
+
     } catch (error) {
         console.error('Error:', error);
     }
 }
-
-
-
-async function sendSolution(matchID: number, solution: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
-    try {
-        const tx = await contract.uploadSolution(matchID,solution);
-        console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-       
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-
-
-async function sendDispute(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
-    try {
-        const tx = await contract.dispute(matchID);
-        console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-       
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-
-
-async function AFKcheck(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
-    try {
-        const tx = await contract.startAfkCheck(matchID);
-        console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-       
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-
-async function HaltGame(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
-    try {
-        const tx = await contract.stopMatch(matchID);
-        console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-       
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-
 
 //in theory we don't need to perform any extra check: if say uploadhash was successful then we can go on and do the feedback, otherwise it automatically kick us out saying were not there wyt...
 
