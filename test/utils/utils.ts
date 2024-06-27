@@ -1,5 +1,9 @@
+import * as CryptoJS from "crypto-js";
 import { ethers } from "hardhat";
 import { ContractTransactionResponse, Result, Interface, AddressLike } from "ethers";
+
+type Code = number;
+type Feedback = number;
 
 /**
  * Extract a value or raise an exception if it is undefined.
@@ -43,4 +47,75 @@ export const getMatchFromEvent = async (tx: ContractTransactionResponse): Promis
     const eventInterface = new ethers.Interface(["event MatchCreated(address creator, address id)"]);
     const event = await getEvent(tx, eventInterface, "MatchCreated", 0);
     return assertDefined(event).id;
+}
+
+/**
+ * Get the ID of a match from the transaction specified.
+ * @param tx The transaction from where to extract the roles.
+ * @returns An object of this form is returned:
+ * {
+ *      codeMaker: the address of the CodeMaker
+ *      codeBreaker: the address of the CodeBreaker
+ * }
+ * @throws Error if an error occurred.
+ */
+export const getRoles = async (tx: ContractTransactionResponse): Promise<any> => {
+    const eventInterface = new ethers.Interface(["event RoundStarted(address id, uint round, address codemaker, address codebreaker)"]);
+    const event = assertDefined(await getEvent(tx, eventInterface, "RoundStarted", 2));
+
+    const codeBreaker = event.codebreaker;
+    const codeMaker = event.codemaker;
+    return { codeMaker, codeBreaker };
+}
+
+/**
+ * Get the updated scores of a match from the transaction specified.
+ * @param tx The transaction from where to extract the roles.
+ * @returns An object of this form is returned:
+ * {
+ *      creatorScore: the score of the creator
+ *      challengerScore: the score of the challenger
+ * }
+ * @throws Error if an error occurred.
+ */
+export const getScores = async (tx: ContractTransactionResponse): Promise<any> => {
+    const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+    const event = assertDefined(await getEvent(tx, eventInterface, "ScoresUpdated", 1));
+
+    const creatorScore = event.creatorScore;
+    const challengerScore = event.challengerScore;
+    return { creatorScore, challengerScore };
+}
+
+/**
+ * Create a new code given the specified colors.
+ * @param c0 The first color.
+ * @param c1 The second color.
+ * @param c2 The third color.
+ * @param c3 The fourth color.
+ * @returns The resulting code.
+ */
+export const newCode = (c0: number, c1: number, c2: number, c3: number): Code => {
+    return c0 | (c1 << 3) | (c2 << 6) | (c3 << 9);
+}
+
+/**
+ * Hash the code provided.
+ * @param code Code to be hashed.
+ * @returns The hash of the code provided.
+ */
+export const hashCode = (code: Code): string => {
+    const numStr = code.toString();
+    const hash = CryptoJS.SHA256(numStr);
+    return "0x" + hash.toString(CryptoJS.enc.Hex);
+}
+
+/**
+ * Create a new feedback.
+ * @param cp The number of correct colors in the correct position.
+ * @param np The number of correct colors in the wrong position.
+ * @returns The resulting feedback.
+ */
+export const newFeedback = (cp: number, np: number): Code => {
+    return cp | (np << 4);
 }
