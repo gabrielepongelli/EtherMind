@@ -16,7 +16,7 @@ export const untilDeploy = async (): Promise<any> => {
 /**
  * Deploy the EtherMind contract and create a new private match.
  */
-export const untilCreate = async (): Promise<any> => {
+const untilCreate = async (): Promise<any> => {
     const data = await untilDeploy();
     const matchId = await getMatchFromEvent(await data.game.createMatch(data.challenger.address));
     data.matchId = matchId;
@@ -27,7 +27,7 @@ export const untilCreate = async (): Promise<any> => {
 /**
  * Deploy the EtherMind contract, create a new match, and join it.
  */
-export const untilJoin = async (): Promise<any> => {
+const untilJoin = async (): Promise<any> => {
     const data = await untilCreate();
 
     const stakeProposal = 20;
@@ -41,7 +41,7 @@ export const untilJoin = async (): Promise<any> => {
  * Deploy the EtherMind contract, create a new match, join it, and decide the 
  * stake value.
  */
-export const untilStakeDecision = async (): Promise<any> => {
+const untilStakeDecision = async (): Promise<any> => {
     const data = await untilJoin();
 
     await data.game.stakeProposal(data.matchId, data.stakeProposal);
@@ -54,7 +54,7 @@ export const untilStakeDecision = async (): Promise<any> => {
  * Deploy the EtherMind contract, create a new match, join it, decide the 
  * stake value, and pay it.
  */
-export const untilStakePayment = async (): Promise<any> => {
+const untilStakePayment = async (): Promise<any> => {
     const data = await untilStakeDecision();
 
     await data.game.payStake(data.matchId, { value: data.finalStake });
@@ -74,7 +74,7 @@ export const untilStakePayment = async (): Promise<any> => {
  * 5. Pay the value decided.
  * 6. Submit the code hash for the first round.
  */
-export const untilFirstRoundCodeHash = async (): Promise<any> => {
+const untilFirstRoundCodeHash = async (): Promise<any> => {
     const data = await untilStakePayment();
 
     const colors = { c0: 0, c1: 1, c2: 2, c3: 3 };
@@ -97,7 +97,7 @@ export const untilFirstRoundCodeHash = async (): Promise<any> => {
  * 6. Submit the code hash for the first round.
  * 7. Submit a first guess.
  */
-export const untilFirstRoundFirstGuess = async (): Promise<any> => {
+const untilFirstRoundFirstGuess = async (): Promise<any> => {
     const data = await untilFirstRoundCodeHash();
 
     const colors = { c0: 1, c1: 2, c2: 3, c3: 4 };
@@ -120,7 +120,7 @@ export const untilFirstRoundFirstGuess = async (): Promise<any> => {
  * 7. Submit a first wrong guess.
  * 8. Submit a first feedback.
  */
-export const untilFirstRoundFirstFeedback = async (): Promise<any> => {
+const untilFirstRoundFirstFeedback = async (): Promise<any> => {
     const data = await untilFirstRoundFirstGuess();
 
     const hints = { cp: 0, np: 3 };
@@ -144,7 +144,7 @@ export const untilFirstRoundFirstFeedback = async (): Promise<any> => {
  * 8. Submit a first feedback.
  * 9. Submit a second wrong guess.
  */
-export const untilFirstRoundSecondGuess = async (): Promise<any> => {
+const untilFirstRoundSecondGuess = async (): Promise<any> => {
     const data = await untilFirstRoundFirstFeedback();
 
     const colors = { c0: 1, c1: 2, c2: 3, c3: 4 };
@@ -169,7 +169,7 @@ export const untilFirstRoundSecondGuess = async (): Promise<any> => {
  * 9. Submit a second wrong guess.
  * 10. Submit a second feedback.
  */
-export const untilFirstRoundSecondFeedback = async (): Promise<any> => {
+const untilFirstRoundSecondFeedback = async (): Promise<any> => {
     const data = await untilFirstRoundSecondGuess();
 
     const hints = { cp: 0, np: 3 };
@@ -192,7 +192,7 @@ export const untilFirstRoundSecondFeedback = async (): Promise<any> => {
  * 7. Submit 12 wrong guesses.
  * 8. Submit 11 feedbacks.
  */
-export const untilFirstRoundLastGuess = async (): Promise<any> => {
+const untilFirstRoundLastGuess = async (): Promise<any> => {
     const data = await untilFirstRoundSecondFeedback();
 
     for (let guess = 2; guess < 11; guess++) {
@@ -226,7 +226,7 @@ export const untilFirstRoundLastGuess = async (): Promise<any> => {
  * 7. Submit 12 wrong guesses.
  * 8. Submit 12 feedbacks.
  */
-export const untilFirstRoundLastFeedback = async (): Promise<any> => {
+const untilFirstRoundLastFeedback = async (): Promise<any> => {
     const data = await untilFirstRoundLastGuess();
 
     const hints = { cp: 0, np: 3 };
@@ -250,7 +250,7 @@ export const untilFirstRoundLastFeedback = async (): Promise<any> => {
  * 8. Submit 12 feedbacks.
  * 9. Submit the final solution for the first round.
  */
-export const untilFirstRoundSolution = async (): Promise<any> => {
+const untilFirstRoundSolution = async (): Promise<any> => {
     const data = await untilFirstRoundLastFeedback();
 
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code));
@@ -270,7 +270,7 @@ export const untilFirstRoundSolution = async (): Promise<any> => {
  * 6. Play a full first round where the CodeMaker wins.
  * 7. Submit the code hash for the second round.
  */
-export const untilSecondRoundCodeHash = async (): Promise<any> => {
+const untilSecondRoundCodeHash = async (): Promise<any> => {
     let data = await untilFirstRoundSolution();
     data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
@@ -295,7 +295,7 @@ export const untilSecondRoundCodeHash = async (): Promise<any> => {
  * 7. Submit the code hash for the second round.
  * 8. Submit a correct guess.
  */
-export const untilSecondRoundCorrectGuess = async (): Promise<any> => {
+const untilSecondRoundCorrectGuess = async (): Promise<any> => {
     const data = await untilSecondRoundCodeHash();
 
     const colors = data.solution.colors;
@@ -319,7 +319,7 @@ export const untilSecondRoundCorrectGuess = async (): Promise<any> => {
  * 8. Submit a correct guess.
  * 9. Submit the correspondant feedback.
  */
-export const untilSecondRoundFeedback = async (): Promise<any> => {
+const untilSecondRoundFeedback = async (): Promise<any> => {
     const data = await untilSecondRoundCorrectGuess();
 
     const hints = { cp: 4, np: 0 };
@@ -344,7 +344,7 @@ export const untilSecondRoundFeedback = async (): Promise<any> => {
  * 9. Submit the correspondant feedback.
  * 10. Submit the final solution for the second round.
  */
-export const untilSecondRoundSolution = async (): Promise<any> => {
+const untilSecondRoundSolution = async (): Promise<any> => {
     const data = await untilSecondRoundFeedback();
 
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code));
@@ -365,7 +365,7 @@ export const untilSecondRoundSolution = async (): Promise<any> => {
  * 7. Play a second round where the CodeBreaker wins at the first guess.
  * 8. Play a third round where the CodeBreaker wins at the first guess.
  */
-export const untilThirdRoundSolution = async (): Promise<any> => {
+const untilThirdRoundSolution = async (): Promise<any> => {
     let data = await untilSecondRoundSolution();
     data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
@@ -402,7 +402,7 @@ export const untilThirdRoundSolution = async (): Promise<any> => {
  * 8. Submit 11 wrong guesses.
  * 9. Submit 11 feedbacks.
  */
-export const untilLastRoundSecondLastFeedback = async (): Promise<any> => {
+const untilLastRoundSecondLastFeedback = async (): Promise<any> => {
     let data = await untilThirdRoundSolution();
     data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
@@ -439,7 +439,7 @@ export const untilLastRoundSecondLastFeedback = async (): Promise<any> => {
  * 6. Play a third round where the CodeBreaker wins at the first guess.
  * 7. Play a fourth round where the CodeBreaker wins at the last guess.
  */
-export const untilLastRoundSolution = async (): Promise<any> => {
+const untilLastRoundSolution = async (): Promise<any> => {
     let data = await untilLastRoundSecondLastFeedback();
 
     const colors = data.solution.colors;
@@ -459,7 +459,7 @@ export const untilLastRoundSolution = async (): Promise<any> => {
     return data;
 }
 
-export const phases = [
+export const phases = {
     untilCreate,
     untilJoin,
     untilStakeDecision,
@@ -479,4 +479,4 @@ export const phases = [
     untilThirdRoundSolution,
     untilLastRoundSecondLastFeedback,
     untilLastRoundSolution
-];
+};

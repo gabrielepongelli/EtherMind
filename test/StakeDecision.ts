@@ -2,19 +2,19 @@ import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { getEvent } from "./utils/utils";
-import { untilCreate, untilJoin, phases } from "./utils/phases";
+import { phases } from "./utils/phases";
 
 describe("Stake decision", function () {
     describe("Proposal on join", function () {
         describe("Events", function () {
             it("Should emit an event when a match is joined signaling the new stake proposal", async function () {
-                const { game, challenger, matchId } = await loadFixture(untilCreate);
+                const { game, challenger, matchId } = await loadFixture(phases.untilCreate);
 
                 await expect(game.connect(challenger).joinMatch(matchId, 10)).to.emit(game, "StakeProposal");
             });
 
             it("Should emit an event when a match is joined signaling the new stake proposal with valid parameters", async function () {
-                const { game, challenger, matchId } = await loadFixture(untilCreate);
+                const { game, challenger, matchId } = await loadFixture(phases.untilCreate);
 
                 const proposal = 10;
                 const tx2 = await game.connect(challenger).joinMatch(matchId, proposal);
@@ -30,15 +30,15 @@ describe("Stake decision", function () {
     describe("Standalone proposal", function () {
         describe("Validation", function () {
             it("Should fail if an invalid match ID is passed", async function () {
-                const { game } = await loadFixture(untilJoin);
+                const { game } = await loadFixture(phases.untilJoin);
                 const invalidMatchId = ethers.ZeroAddress;
 
                 await expect(game.stakeProposal(invalidMatchId, 10)).to.be.revertedWith("The match specified does not exist");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
-                for (const phaseFn of phases) {
-                    if (phaseFn == untilJoin) {
+                for (const phaseFn of Object.values(phases)) {
+                    if (phaseFn == phases.untilJoin) {
                         return;
                     }
 
@@ -50,25 +50,25 @@ describe("Stake decision", function () {
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
-                const { game, matchId, otherPlayer } = await loadFixture(untilJoin);
+                const { game, matchId, otherPlayer } = await loadFixture(phases.untilJoin);
 
                 await expect(game.connect(otherPlayer).stakeProposal(matchId, 10)).to.be.revertedWith("You are not part of the match specified");
             });
 
             it("Should not fail if called with the same stake proposal value", async function () {
-                const { game, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 await expect(game.stakeProposal(matchId, stakeProposal)).not.to.be.reverted;
             });
 
             it("Should not fail if called with a different stake proposal value", async function () {
-                const { game, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 await expect(game.stakeProposal(matchId, stakeProposal + 1)).not.to.be.reverted;
             });
 
             it("Should not fail if called multiple times consecutively by the same player", async function () {
-                const { game, challenger, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, challenger, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 for (let i = 0; i < 5; i++) {
                     await expect(game.stakeProposal(matchId, stakeProposal + 1)).not.to.be.reverted;
@@ -80,7 +80,7 @@ describe("Stake decision", function () {
             });
 
             it("Should fail if called after that the stake value has been decided", async function () {
-                const { game, challenger, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, challenger, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 await expect(game.stakeProposal(matchId, stakeProposal)).not.to.be.reverted;
 
@@ -91,13 +91,13 @@ describe("Stake decision", function () {
 
         describe("Events", function () {
             it("Should emit an event when called with a different value signaling a new stake proposal", async function () {
-                const { game, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 await expect(game.stakeProposal(matchId, stakeProposal + 1)).to.emit(game, "StakeProposal");
             });
 
             it("Should emit an event when called consecutively by the same player signaling a new stake proposal", async function () {
-                const { game, challenger, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, challenger, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 await expect(game.connect(challenger).stakeProposal(matchId, stakeProposal)).to.emit(game, "StakeProposal");
 
@@ -105,7 +105,7 @@ describe("Stake decision", function () {
             });
 
             it("Should emit an event when a new stake proposal is issued with valid parameters", async function () {
-                const { game, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 const newStakeProposal = stakeProposal + 10;
                 const tx = await game.stakeProposal(matchId, newStakeProposal);
@@ -117,13 +117,13 @@ describe("Stake decision", function () {
             });
 
             it("Should emit an event when called with the same value by the other player signaling that the stake has been decided", async function () {
-                const { game, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 await expect(game.stakeProposal(matchId, stakeProposal)).to.emit(game, "StakeFixed");
             });
 
             it("Should emit an event when the stake value is decided with valid parameters", async function () {
-                const { game, matchId, stakeProposal } = await loadFixture(untilJoin);
+                const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 const tx = await game.stakeProposal(matchId, stakeProposal);
                 const eventInterface = new ethers.Interface(["event StakeFixed(address id, uint256 stake)"]);
