@@ -88,10 +88,11 @@ library CodeOp {
     /**
      * Produce an hash of the given code.
      * @param code The code to be hashed.
+     * @param salt The salt to use in the calculation of the hash.
      * @return The hash of code.
      */
-    function hashCode(Code code) internal pure returns (bytes32) {
-        return sha256(abi.encodePacked(Code.unwrap(code)));
+    function hashCode(Code code, bytes4 salt) internal pure returns (bytes32) {
+        return sha256(abi.encodePacked(Code.unwrap(code), salt));
     }
 }
 

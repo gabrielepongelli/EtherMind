@@ -104,10 +104,14 @@ export const newCode = (c0: number, c1: number, c2: number, c3: number): Code =>
  * @param code Code to be hashed.
  * @returns The hash of the code provided.
  */
-export const hashCode = (code: Code): string => {
-    const numStr = code.toString();
-    const hash = CryptoJS.SHA256(numStr);
+export const hashCode = (code: Code, salt: number): string => {
+    const saltedInput = code.toString() + salt.toString(16);
+    const hash = CryptoJS.SHA256(saltedInput);
     return "0x" + hash.toString(CryptoJS.enc.Hex);
+}
+
+export const prepareSalt = (salt: number): string => {
+    return "0x" + salt.toString(16);
 }
 
 /**

@@ -278,7 +278,7 @@ contract EtherMind {
     /**
      * Upload the hash of the solution to use in a new round.
      * @param id The id of the match on which to operate.
-     * @param solutionHash The hash of the solution.
+     * @param solutionHash The salted hash of the solution.
      */
     function newSolutionHash(
         address id,
@@ -356,10 +356,12 @@ contract EtherMind {
      * Upload the solution of this round.
      * @param id The id of the match on which to operate.
      * @param solution The solution of the round.
+     * @param salt The salt used in the calculation of the solution hash.
      */
     function uploadSolution(
         address id,
-        Code solution
+        Code solution,
+        bytes4 salt
     )
         external
         payable
@@ -371,7 +373,7 @@ contract EtherMind {
 
         Game storage game = matchReg.getMatch(id);
 
-        if (game.submitFinalSolution(solution)) {
+        if (game.submitFinalSolution(solution, salt)) {
             // solution hashes match
 
             game.stopAfkTimer();

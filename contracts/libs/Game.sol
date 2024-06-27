@@ -327,16 +327,18 @@ library GameOp {
      * Submit the final solution.
      * @param self The game to use.
      * @param solution The solution.
+     * @param salt The salt used in the calculation of the solution hash.
      * @return True if the final solution matches with the hash submitted at
      * the beginning of the round, false otherwise.
      */
     function submitFinalSolution(
         Game storage self,
-        Code solution
+        Code solution,
+        bytes4 salt
     ) internal returns (bool) {
         self.solution = solution;
         self.flags = (self.flags - CM_WAITING) + CB_WAITING;
-        return self.hashedSolution == solution.hashCode();
+        return self.hashedSolution == solution.hashCode(salt);
     }
 
     /**
