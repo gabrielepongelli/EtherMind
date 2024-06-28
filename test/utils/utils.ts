@@ -125,3 +125,21 @@ export const hashCode = (code: Code, salt: number): string => {
 export const newFeedback = (cp: number, np: number): Feedback => {
     return cp | (np << 4);
 }
+
+/**
+ * Enable or disable block auto-mining.
+ * @param auto True = auto-mining enabled, false = auto-mining disabled.
+ */
+export const setAutoMine = async (auto: boolean) => {
+    await ethers.provider.send("evm_setAutomine", [auto]);
+}
+
+/**
+ * Mine a specified number of blocks.
+ * @param n The number of blocks to mine. 
+ */
+export const mineBlocks = async (n: number) => {
+    for (let i = 0; i < n; i++) {
+        await ethers.provider.send("evm_mine", []);
+    }
+}
