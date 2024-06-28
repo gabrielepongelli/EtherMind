@@ -392,6 +392,7 @@ contract EtherMind {
         } else {
             // solution dosen't match -> punish CodeMaker
             punish(id, msg.sender, "Wrong solution provided");
+            matchReg.deleteMatch(id);
             emit MatchEnded(id);
         }
     }
