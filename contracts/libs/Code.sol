@@ -69,7 +69,7 @@ library CodeOp {
      * less than 4.
      */
     function getColor(Code code, uint8 n) internal pure returns (uint8) {
-        return uint8(Code.unwrap(code) & (7 << (n * 3)));
+        return uint8((Code.unwrap(code) & (7 << (n * 3))) >> (n * 3));
     }
 
     /**
@@ -119,7 +119,7 @@ library FeedbackOp {
      * @param f The feedback to use. It is assumed to be in a valid format.
      */
     function np(Feedback f) internal pure returns (uint8) {
-        return uint8(Feedback.unwrap(f) & (15 << 4));
+        return uint8((Feedback.unwrap(f) & (15 << 4)) >> 4);
     }
 
     /**
