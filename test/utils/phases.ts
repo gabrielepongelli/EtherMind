@@ -253,11 +253,13 @@ const untilFirstRoundLastFeedback = async (): Promise<any> => {
  * 9. Submit the final solution for the first round.
  */
 const untilFirstRoundSolution = async (): Promise<any> => {
-    const data = await untilFirstRoundLastFeedback();
+    let data = await untilFirstRoundLastFeedback();
 
-    const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
-    data.creatorScore = creatorScore;
-    data.challengerScore = challengerScore;
+    await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt);
+    //const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
+    //data.creatorScore = creatorScore;
+    //data.challengerScore = challengerScore;
+    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
     return data;
 }
@@ -273,8 +275,7 @@ const untilFirstRoundSolution = async (): Promise<any> => {
  * 7. Submit the code hash for the second round.
  */
 const untilSecondRoundCodeHash = async (): Promise<any> => {
-    let data = await untilFirstRoundSolution();
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
+    const data = await untilFirstRoundSolution();
 
     const colors = { c0: 0, c1: 1, c2: 2, c3: 3 };
     const code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
@@ -354,6 +355,7 @@ const untilSecondRoundSolution = async (): Promise<any> => {
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
+    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
     return data;
 }
@@ -371,7 +373,6 @@ const untilSecondRoundSolution = async (): Promise<any> => {
  */
 const untilThirdRoundSolution = async (): Promise<any> => {
     let data = await untilSecondRoundSolution();
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
     const colors = { c0: 0, c1: 1, c2: 2, c3: 3 };
     const code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
@@ -392,6 +393,7 @@ const untilThirdRoundSolution = async (): Promise<any> => {
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
+    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
     return data;
 }
@@ -409,8 +411,7 @@ const untilThirdRoundSolution = async (): Promise<any> => {
  * 9. Submit 11 feedbacks.
  */
 const untilLastRoundSecondLastFeedback = async (): Promise<any> => {
-    let data = await untilThirdRoundSolution();
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
+    const data = await untilThirdRoundSolution();
 
     let colors = { c0: 0, c1: 1, c2: 2, c3: 3 };
     let code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
@@ -463,6 +464,7 @@ const untilLastRoundSolution = async (): Promise<any> => {
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
+    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
 
     return data;
 }
