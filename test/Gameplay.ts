@@ -478,11 +478,11 @@ describe("Gameplay", function () {
                 const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
                 const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
 
-                const challengerWonFullPoints = event.challengerScore === N_ROUNDS + EXTRA_POINTS;
-                const creatorWonFullPoints = event.creatorScore === N_ROUNDS + EXTRA_POINTS;
+                const challengerWonFullPoints = event.challengerScore == N_ROUNDS + EXTRA_POINTS;
+                const creatorWonFullPoints = event.creatorScore == N_ROUNDS + EXTRA_POINTS;
 
-                const challengerWonNoPoints = event.challengerScore === 0;
-                const creatorWonNoPoints = event.creatorScore === 0;
+                const challengerWonNoPoints = event.challengerScore == 0;
+                const creatorWonNoPoints = event.creatorScore == 0;
 
                 expect(event.id).to.be.equal(matchId);
                 expect(challengerWonFullPoints || creatorWonFullPoints).to.be.true;
@@ -508,11 +508,11 @@ describe("Gameplay", function () {
                 const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
                 const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
 
-                const challengerWonFullPoints = event.challengerScore === N_ROUNDS;
-                const creatorWonFullPoints = event.creatorScore === N_ROUNDS;
+                const challengerWonFullPoints = event.challengerScore == N_ROUNDS;
+                const creatorWonFullPoints = event.creatorScore == N_ROUNDS;
 
-                const challengerWonNoPoints = event.challengerScore === 0;
-                const creatorWonNoPoints = event.creatorScore === 0;
+                const challengerWonNoPoints = event.challengerScore == 0;
+                const creatorWonNoPoints = event.creatorScore == 0;
 
                 expect(event.id).to.be.equal(matchId);
                 expect(challengerWonFullPoints || creatorWonFullPoints).to.be.true;
@@ -536,11 +536,11 @@ describe("Gameplay", function () {
                 const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
                 const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
 
-                const challengerWonFullPoints = event.challengerScore === guesses.length;
-                const creatorWonFullPoints = event.creatorScore === guesses.length;
+                const challengerWonFullPoints = event.challengerScore == 2;
+                const creatorWonFullPoints = event.creatorScore == 2;
 
-                const challengerWonNoPoints = event.challengerScore === 0;
-                const creatorWonNoPoints = event.creatorScore === 0;
+                const challengerWonNoPoints = event.challengerScore == 0;
+                const creatorWonNoPoints = event.creatorScore == 0;
 
                 expect(event.id).to.be.equal(matchId);
                 expect(challengerWonFullPoints || creatorWonFullPoints).to.be.true;
@@ -602,7 +602,7 @@ describe("Gameplay", function () {
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
                 const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
-                const event = await getEvent(tx, eventInterface, "PlayerPunished", 1);
+                const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
                 expect(event.id).to.be.equal(matchId);
                 expect(event.player).to.be.equal(codeMaker.address);
@@ -622,7 +622,7 @@ describe("Gameplay", function () {
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
                 const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
-                const event = await getEvent(tx, eventInterface, "MatchEnded", 2);
+                const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
             });
@@ -640,7 +640,7 @@ describe("Gameplay", function () {
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
                 const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
-                const event = await getEvent(tx, eventInterface, "PlayerPunished", 1);
+                const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
                 expect(event.id).to.be.equal(matchId);
                 expect(event.player).to.be.equal(codeMaker.address);
@@ -660,7 +660,7 @@ describe("Gameplay", function () {
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
                 const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
-                const event = await getEvent(tx, eventInterface, "MatchEnded", 2);
+                const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
             });
