@@ -92,7 +92,7 @@ library CodeOp {
      * @return The hash of code.
      */
     function hashCode(Code code, bytes4 salt) internal pure returns (bytes32) {
-        return sha256(abi.encodePacked(Code.unwrap(code), salt));
+        return keccak256(abi.encodePacked(Code.unwrap(code), salt));
     }
 }
 
