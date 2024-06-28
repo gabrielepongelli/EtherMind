@@ -122,6 +122,6 @@ export const hashCode = (code: Code, salt: number): string => {
  * @param np The number of correct colors in the wrong position.
  * @returns The resulting feedback.
  */
-export const newFeedback = (cp: number, np: number): Code => {
+export const newFeedback = (cp: number, np: number): Feedback => {
     return cp | (np << 4);
 }
