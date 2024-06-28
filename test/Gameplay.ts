@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getEvent, newCode, hashCode, newFeedback } from "./utils/utils";
+import { getEvent, newCode, hashCode, newFeedback, prepareSalt } from "./utils/utils";
 import { phases } from "./utils/phases";
 
 describe("Gameplay", function () {
@@ -128,7 +128,8 @@ describe("Gameplay", function () {
                         || phaseFn == phases.untilFirstRoundFirstFeedback
                         || phaseFn == phases.untilFirstRoundSecondFeedback
                         || phaseFn == phases.untilSecondRoundCodeHash
-                        || phaseFn == phases.untilLastRoundSecondLastFeedback) {
+                        || phaseFn == phases.untilLastRoundSecondLastFeedback
+                        || phaseFn == phases.untilFirstRoundSecondLastFeedback) {
                         return;
                     }
 
@@ -237,7 +238,8 @@ describe("Gameplay", function () {
                     if (phaseFn == phases.untilFirstRoundFirstGuess
                         || phaseFn == phases.untilFirstRoundSecondGuess
                         || phaseFn == phases.untilFirstRoundLastGuess
-                        || phaseFn == phases.untilSecondRoundCorrectGuess) {
+                        || phaseFn == phases.untilSecondRoundCorrectGuess
+                        || phaseFn == phases.untilLastRoundLastGuess) {
                         return;
                     }
 
@@ -348,12 +350,344 @@ describe("Gameplay", function () {
 
     describe("Solution submission", function () {
         describe("Validation", function () {
+            it("Should fail if an invalid match ID is passed", async function () {
+                const { game, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const invalidMatchId = ethers.ZeroAddress;
+
+                await expect(game.connect(codeMaker).uploadSolution(invalidMatchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The match specified does not exist");
+            });
+
+            it("Should fail if called on a match that is in the wrong phase", async function () {
+                const solution = newCode(0, 1, 2, 3);
+                const salt = prepareSalt(1234);
+
+                for (const phaseFn of Object.values(phases)) {
+                    if (phaseFn == phases.untilFirstRoundLastFeedback
+                        || phaseFn == phases.untilSecondRoundFeedback
+                        || phaseFn == phases.untilLastRoundLastFeedback) {
+                        return;
+                    }
+
+                    const { game, challenger, matchId } = await loadFixture(phaseFn);
+
+                    await expect(game.uploadSolution(matchId, solution, salt)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.connect(challenger).uploadSolution(matchId, solution, salt)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                }
+            });
+
+            it("Should fail if called by someone which is not part of the match", async function () {
+                const { game, matchId, otherPlayer, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await expect(game.connect(otherPlayer).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The caller is not the CodeMaker");
+            });
+
+            it("Should fail if called from the CodeBreaker", async function () {
+                const { game, matchId, codeBreaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await expect(game.connect(codeBreaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The caller is not the CodeMaker");
+            });
+
+            it("Should fail if called more than once consecutively by the CodeMaker", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("Operation not permitted in this phase of the game");
+            });
+
+            it("Should fail if called with an invalid code format", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const solution = newCode(7, 1, 2, 3);
+                const salt = prepareSalt(1234);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution, salt)).to.be.revertedWith("Invalid solution format");
+            });
+
+            it("Should terminate the match if called with a solution different from the one submitted initially", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const code = newCode(0, 0, 0, 0);
+
+                await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
+
+                // in this case if the error is that the match specified 
+                // doesn't exist it means that the match has been deleted
+                await expect(game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt)).to.be.revertedWith("The match specified does not exist");
+            });
+
+            it("Should terminate the match if called with a salt different from the one used initially", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const salt = prepareSalt(9999999);
+
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
+
+                // in this case if the error is that the match specified 
+                // doesn't exist it means that the match has been deleted
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, salt)).to.be.revertedWith("The match specified does not exist");
+            });
+
+            it("Should terminate the game if called in last round", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phases.untilLastRoundLastFeedback);
+
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+
+                // in this case if the error is that the operation is not 
+                // permitted it means that the game is ended
+                await expect(game.connect(codeBreaker).newSolutionHash(matchId, solution.codeHash)).to.be.revertedWith("Operation not permitted in this phase of the game");
+            });
+
+            it("Should not terminate the game if not called in the last round", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+
+                await expect(game.connect(codeBreaker).newSolutionHash(matchId, solution.codeHash)).not.to.be.reverted;
+            });
         });
 
         describe("Events", function () {
+            it("Should emit an event when called by the CodeMaker signaling the successful submission of the solution", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.emit(game, "SolutionSubmitted");
+            });
+
+            it("Should emit an event when called by the CodeMaker signaling the successful submission of the solution with valid parameters", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event SolutionSubmitted(address id, address from, uint16 solution)"]);
+                const event = await getEvent(tx, eventInterface, "SolutionSubmitted");
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.from).to.be.equal(codeMaker.address);
+                expect(event.solution).to.be.equal(solution.code);
+            });
+
+            it("Should emit an event when called by the CodeMaker signaling the new updated scores", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.emit(game, "ScoresUpdated");
+            });
+
+            it("Should emit an event when called by the CodeMaker signaling the new updated scores with valid parameters if no guess was correct", async function () {
+                const N_ROUNDS = 12;
+                const EXTRA_POINTS = 6;
+
+                const { game, matchId, codeMaker, challenger, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+                const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
+
+                const challengerWonFullPoints = event.challengerScore === N_ROUNDS + EXTRA_POINTS;
+                const creatorWonFullPoints = event.creatorScore === N_ROUNDS + EXTRA_POINTS;
+
+                const challengerWonNoPoints = event.challengerScore === 0;
+                const creatorWonNoPoints = event.creatorScore === 0;
+
+                expect(event.id).to.be.equal(matchId);
+                expect(challengerWonFullPoints || creatorWonFullPoints).to.be.true;
+                expect(challengerWonFullPoints && creatorWonFullPoints).to.be.false;
+                expect(challengerWonNoPoints || creatorWonNoPoints).to.be.true;
+                expect(challengerWonNoPoints && creatorWonNoPoints).to.be.false;
+                if (challenger.address === codeMaker.address) {
+                    expect(challengerWonFullPoints && creatorWonNoPoints).to.be.true;
+                } else {
+                    expect(creatorWonFullPoints && challengerWonNoPoints).to.be.true;
+                }
+            });
+
+            it("Should emit an event when called by the CodeMaker signaling the new updated scores with valid parameters if the last guess of the round was correct", async function () {
+                const N_ROUNDS = 12;
+
+                const { game, matchId, codeMaker, codeBreaker, challenger, solution } = await loadFixture(phases.untilFirstRoundSecondLastFeedback);
+
+                await game.connect(codeBreaker).newGuess(matchId, solution.code);
+                await game.connect(codeMaker).newFeedback(matchId, newFeedback(4, 0));
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+                const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
+
+                const challengerWonFullPoints = event.challengerScore === N_ROUNDS;
+                const creatorWonFullPoints = event.creatorScore === N_ROUNDS;
+
+                const challengerWonNoPoints = event.challengerScore === 0;
+                const creatorWonNoPoints = event.creatorScore === 0;
+
+                expect(event.id).to.be.equal(matchId);
+                expect(challengerWonFullPoints || creatorWonFullPoints).to.be.true;
+                expect(challengerWonFullPoints && creatorWonFullPoints).to.be.false;
+                expect(challengerWonNoPoints || creatorWonNoPoints).to.be.true;
+                expect(challengerWonNoPoints && creatorWonNoPoints).to.be.false;
+                if (challenger.address === codeMaker.address) {
+                    expect(challengerWonFullPoints && creatorWonNoPoints).to.be.true;
+                } else {
+                    expect(creatorWonFullPoints && challengerWonNoPoints).to.be.true;
+                }
+            });
+
+            it("Should emit an event when called by the CodeMaker signaling the new updated scores with valid parameters if one guess in the middle of the round was correct", async function () {
+                const { game, matchId, codeMaker, codeBreaker, challenger, solution, guesses } = await loadFixture(phases.untilFirstRoundFirstFeedback);
+
+                await game.connect(codeBreaker).newGuess(matchId, solution.code);
+                await game.connect(codeMaker).newFeedback(matchId, newFeedback(4, 0));
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+                const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
+
+                const challengerWonFullPoints = event.challengerScore === guesses.length;
+                const creatorWonFullPoints = event.creatorScore === guesses.length;
+
+                const challengerWonNoPoints = event.challengerScore === 0;
+                const creatorWonNoPoints = event.creatorScore === 0;
+
+                expect(event.id).to.be.equal(matchId);
+                expect(challengerWonFullPoints || creatorWonFullPoints).to.be.true;
+                expect(challengerWonFullPoints && creatorWonFullPoints).to.be.false;
+                expect(challengerWonNoPoints || creatorWonNoPoints).to.be.true;
+                expect(challengerWonNoPoints && creatorWonNoPoints).to.be.false;
+                if (challenger.address === codeMaker.address) {
+                    expect(challengerWonFullPoints && creatorWonNoPoints).to.be.true;
+                } else {
+                    expect(creatorWonFullPoints && challengerWonNoPoints).to.be.true;
+                }
+            });
+
+            it("Should emit an event when called by the CodeMaker if called in the last round signaling the end of the game", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilLastRoundLastFeedback);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.emit(game, "GameEnded");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called in the last round signaling the end of the game with valid parameters", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilLastRoundLastFeedback);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event GameEnded(address id)"]);
+                const event = await getEvent(tx, eventInterface, "GameEnded", 2);
+
+                expect(event.id).to.be.equal(matchId);
+            });
+
+            it("Should emit an event when called by the CodeMaker if called not in the last round signaling the beginning of a new round", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.emit(game, "RoundStarted");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called not in the last round signaling the beginning of a new round with valid parameters", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event RoundStarted(address id, uint round, address codemaker, address codebreaker)"]);
+                const event = await getEvent(tx, eventInterface, "RoundStarted", 2);
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.round).to.be.equal(2);
+                expect(event.codebreaker).to.be.equal(codeMaker.address);
+                expect(event.codemaker).to.be.equal(codeBreaker.address);
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a solution different from the one submitted initially signaling that the CodeMaker has been punished", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const code = newCode(0, 0, 0, 0);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt)).to.emit(game, "PlayerPunished");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a solution different from the one submitted initially signaling that the CodeMaker has been punished with valid parameters", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const code = newCode(0, 0, 0, 0);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+                const event = await getEvent(tx, eventInterface, "PlayerPunished", 1);
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.player).to.be.equal(codeMaker.address);
+                expect(event.reason).to.be.equal("Wrong solution provided");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a solution different from the one submitted initially signaling that match has been terminated", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const code = newCode(0, 0, 0, 0);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt)).to.emit(game, "MatchEnded");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a solution different from the one submitted initially signaling that match has been terminated with valid parameters", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const code = newCode(0, 0, 0, 0);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
+                const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                const event = await getEvent(tx, eventInterface, "MatchEnded", 2);
+
+                expect(event.id).to.be.equal(matchId);
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a salt different from the one used initially signaling that the CodeMaker has been punished", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const salt = prepareSalt(9999999);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, salt)).to.emit(game, "PlayerPunished");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a salt different from the one used initially signaling that the CodeMaker has been punished with valid parameters", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const salt = prepareSalt(9999999);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
+                const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+                const event = await getEvent(tx, eventInterface, "PlayerPunished", 1);
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.player).to.be.equal(codeMaker.address);
+                expect(event.reason).to.be.equal("Wrong solution provided");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a salt different from the one used initially signaling that match has been terminated", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const salt = prepareSalt(9999999);
+
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, salt)).to.emit(game, "MatchEnded");
+            });
+
+            it("Should emit an event when called by the CodeMaker if called with a salt different from the one used initially signaling that match has been terminated with valid parameters", async function () {
+                const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const salt = prepareSalt(9999999);
+
+                const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
+                const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                const event = await getEvent(tx, eventInterface, "MatchEnded", 2);
+
+                expect(event.id).to.be.equal(matchId);
+            });
         });
 
         describe("Transactions", function () {
+            it("Should transfer all the stake amount to the CodeBreaker if called by the CodeMaker with a solution different from the one submitted initially", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution, finalStake } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const code = newCode(0, 0, 0, 0);
+
+                const totalStakeAmount = finalStake * 2;
+                await expect(game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt)).to.changeEtherBalances(
+                    [codeBreaker, game],
+                    [totalStakeAmount, -totalStakeAmount]
+                );
+            });
+
+            it("Should transfer all the stake amount to the CodeBreaker if called by the CodeMaker with a salt different from the one used initially", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution, finalStake } = await loadFixture(phases.untilFirstRoundLastFeedback);
+                const salt = prepareSalt(9999999);
+
+                const totalStakeAmount = finalStake * 2;
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, salt)).to.changeEtherBalances(
+                    [codeBreaker, game],
+                    [totalStakeAmount, -totalStakeAmount]
+                );
+            });
         });
     });
 

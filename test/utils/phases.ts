@@ -191,10 +191,10 @@ const untilFirstRoundSecondFeedback = async (): Promise<any> => {
  * 4. Decide the stake value.
  * 5. Pay the value decided.
  * 6. Submit the code hash for the first round.
- * 7. Submit 12 wrong guesses.
+ * 7. Submit 11 wrong guesses.
  * 8. Submit 11 feedbacks.
  */
-const untilFirstRoundLastGuess = async (): Promise<any> => {
+const untilFirstRoundSecondLastFeedback = async (): Promise<any> => {
     const data = await untilFirstRoundSecondFeedback();
 
     for (let guess = 2; guess < 11; guess++) {
@@ -208,6 +208,23 @@ const untilFirstRoundLastGuess = async (): Promise<any> => {
         data.feedbacks.push({ hints, feedback });
         await data.game.connect(data.codeMaker).newFeedback(data.matchId, feedback);
     }
+
+    return data;
+}
+
+/**
+ * Perform the following operations:
+ * 1. Deploy the EtherMind contract.
+ * 2. Create a new match.
+ * 3. Join the match.
+ * 4. Decide the stake value.
+ * 5. Pay the value decided.
+ * 6. Submit the code hash for the first round.
+ * 7. Submit 12 wrong guesses.
+ * 8. Submit 11 feedbacks.
+ */
+const untilFirstRoundLastGuess = async (): Promise<any> => {
+    const data = await untilFirstRoundSecondLastFeedback();
 
     const colors = { c0: 1, c1: 2, c2: 3, c3: 4 };
     const code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
@@ -445,9 +462,11 @@ const untilLastRoundSecondLastFeedback = async (): Promise<any> => {
  * 4. Play a full first round where the CodeMaker wins.
  * 5. Play a second round where the CodeBreaker wins at the first guess.
  * 6. Play a third round where the CodeBreaker wins at the first guess.
- * 7. Play a fourth round where the CodeBreaker wins at the last guess.
+ * 7. Submit the code hash for the last round.
+ * 8. Submit 12 wrong guesses.
+ * 9. Submit 11 feedbacks.
  */
-const untilLastRoundSolution = async (): Promise<any> => {
+const untilLastRoundLastGuess = async (): Promise<any> => {
     let data = await untilLastRoundSecondLastFeedback();
 
     const colors = data.solution.colors;
@@ -455,15 +474,48 @@ const untilLastRoundSolution = async (): Promise<any> => {
     data.guesses.push({ colors, code });
     await data.game.connect(data.codeBreaker).newGuess(data.matchId, code);
 
+    return data;
+}
+
+/**
+ * Perform the following operations:
+ * 1. Deploy the EtherMind contract.
+ * 2. Create a new match and join it.
+ * 3. Decide the stake value and pay it.
+ * 4. Play a full first round where the CodeMaker wins.
+ * 5. Play a second round where the CodeBreaker wins at the first guess.
+ * 6. Play a third round where the CodeBreaker wins at the first guess.
+ * 7. Submit the code hash for the last round.
+ * 8. Submit 12 wrong guesses.
+ * 9. Submit 12 feedbacks.
+ */
+const untilLastRoundLastFeedback = async (): Promise<any> => {
+    let data = await untilLastRoundLastGuess();
+
     const hints = { cp: 4, np: 0 };
     const feedback = newFeedback(hints.cp, hints.np);
     data.feedbacks.push({ hints, feedback });
     await data.game.connect(data.codeMaker).newFeedback(data.matchId, feedback);
 
+    return data;
+}
+
+/**
+ * Perform the following operations:
+ * 1. Deploy the EtherMind contract.
+ * 2. Create a new match and join it.
+ * 3. Decide the stake value and pay it.
+ * 4. Play a full first round where the CodeMaker wins.
+ * 5. Play a second round where the CodeBreaker wins at the first guess.
+ * 6. Play a third round where the CodeBreaker wins at the first guess.
+ * 7. Play a fourth round where the CodeBreaker wins at the last guess.
+ */
+const untilLastRoundSolution = async (): Promise<any> => {
+    let data = await untilLastRoundLastFeedback();
+
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
-    [data.codeMaker, data.codeBreaker] = [data.codeBreaker, data.codeMaker];
 
     return data;
 }
@@ -478,6 +530,7 @@ export const phases = {
     untilFirstRoundFirstFeedback,
     untilFirstRoundSecondGuess,
     untilFirstRoundSecondFeedback,
+    untilFirstRoundSecondLastFeedback,
     untilFirstRoundLastGuess,
     untilFirstRoundLastFeedback,
     untilFirstRoundSolution,
@@ -487,5 +540,7 @@ export const phases = {
     untilSecondRoundSolution,
     untilThirdRoundSolution,
     untilLastRoundSecondLastFeedback,
+    untilLastRoundLastGuess,
+    untilLastRoundLastFeedback,
     untilLastRoundSolution
 };
