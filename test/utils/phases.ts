@@ -255,11 +255,10 @@ const untilFirstRoundLastFeedback = async (): Promise<any> => {
 const untilFirstRoundSolution = async (): Promise<any> => {
     let data = await untilFirstRoundLastFeedback();
 
-    await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt);
-    //const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
-    //data.creatorScore = creatorScore;
-    //data.challengerScore = challengerScore;
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
+    const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
+    data.creatorScore = creatorScore;
+    data.challengerScore = challengerScore;
+    [data.codeMaker, data.codeBreaker] = [data.codeBreaker, data.codeMaker];
 
     return data;
 }
@@ -355,7 +354,7 @@ const untilSecondRoundSolution = async (): Promise<any> => {
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
+    [data.codeMaker, data.codeBreaker] = [data.codeBreaker, data.codeMaker];
 
     return data;
 }
@@ -393,7 +392,7 @@ const untilThirdRoundSolution = async (): Promise<any> => {
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
+    [data.codeMaker, data.codeBreaker] = [data.codeBreaker, data.codeMaker];
 
     return data;
 }
@@ -464,7 +463,7 @@ const untilLastRoundSolution = async (): Promise<any> => {
     const { creatorScore, challengerScore } = await getScores(await data.game.connect(data.codeMaker).uploadSolution(data.matchId, data.solution.code, data.solution.encodedSalt));
     data.creatorScore = creatorScore;
     data.challengerScore = challengerScore;
-    data.codeMaker, data.codeBreaker = data.codeBreaker, data.codeMaker;
+    [data.codeMaker, data.codeBreaker] = [data.codeBreaker, data.codeMaker];
 
     return data;
 }

@@ -1,4 +1,3 @@
-import * as CryptoJS from "crypto-js";
 import { ethers } from "hardhat";
 import { ContractTransactionResponse, Result, Interface, AddressLike } from "ethers";
 
@@ -100,18 +99,21 @@ export const newCode = (c0: number, c1: number, c2: number, c3: number): Code =>
 }
 
 /**
+ * Encode the salt so that it is in the correct format expected by the contract.
+ * @param salt The salt to encode.
+ * @returns The encoded salt.
+ */
+export const prepareSalt = (salt: number): string => {
+    return "0x" + salt.toString(16).padStart(8, "0");
+}
+
+/**
  * Hash the code provided.
  * @param code Code to be hashed.
  * @returns The hash of the code provided.
  */
 export const hashCode = (code: Code, salt: number): string => {
-    const saltedInput = code.toString() + salt.toString(16);
-    const hash = CryptoJS.SHA256(saltedInput);
-    return "0x" + hash.toString(CryptoJS.enc.Hex);
-}
-
-export const prepareSalt = (salt: number): string => {
-    return "0x" + salt.toString(16).padStart(8, "0");
+    return ethers.solidityPackedKeccak256(['uint16', 'bytes4'], [code, prepareSalt(salt)])
 }
 
 /**
