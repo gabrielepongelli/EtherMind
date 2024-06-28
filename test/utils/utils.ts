@@ -111,7 +111,7 @@ export const hashCode = (code: Code, salt: number): string => {
 }
 
 export const prepareSalt = (salt: number): string => {
-    return "0x" + salt.toString(16);
+    return "0x" + salt.toString(16).padStart(8, "0");
 }
 
 /**
