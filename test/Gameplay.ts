@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getEvent, newCode, hashCode } from "./utils/utils";
+import { getEvent, newCode, hashCode, newFeedback } from "./utils/utils";
 import { phases } from "./utils/phases";
 
 describe("Gameplay", function () {
@@ -127,7 +127,8 @@ describe("Gameplay", function () {
                     if (phaseFn == phases.untilFirstRoundCodeHash
                         || phaseFn == phases.untilFirstRoundFirstFeedback
                         || phaseFn == phases.untilFirstRoundSecondFeedback
-                        || phaseFn == phases.untilSecondRoundCodeHash) {
+                        || phaseFn == phases.untilSecondRoundCodeHash
+                        || phaseFn == phases.untilLastRoundSecondLastFeedback) {
                         return;
                     }
 
@@ -221,9 +222,127 @@ describe("Gameplay", function () {
 
     describe("Feedback submission", function () {
         describe("Validation", function () {
+            it("Should fail if an invalid match ID is passed", async function () {
+                const { game, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const invalidMatchId = ethers.ZeroAddress;
+                const feedback = newFeedback(0, 3);
+
+                await expect(game.connect(codeMaker).newFeedback(invalidMatchId, feedback)).to.be.revertedWith("The match specified does not exist");
+            });
+
+            it("Should fail if called on a match that is in the wrong phase", async function () {
+                const feedback = newFeedback(0, 3);
+
+                for (const phaseFn of Object.values(phases)) {
+                    if (phaseFn == phases.untilFirstRoundFirstGuess
+                        || phaseFn == phases.untilFirstRoundSecondGuess
+                        || phaseFn == phases.untilFirstRoundLastGuess
+                        || phaseFn == phases.untilSecondRoundCorrectGuess) {
+                        return;
+                    }
+
+                    const { game, challenger, matchId } = await loadFixture(phaseFn);
+
+                    await expect(game.newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.connect(challenger).newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                }
+            });
+
+            it("Should fail if called by someone which is not part of the match", async function () {
+                const { game, matchId, otherPlayer } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(0, 3);
+
+                await expect(game.connect(otherPlayer).newFeedback(matchId, feedback)).to.be.revertedWith("The caller is not the CodeMaker");
+            });
+
+            it("Should fail if called from the CodeBreaker", async function () {
+                const { game, matchId, codeBreaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(0, 3);
+
+                await expect(game.connect(codeBreaker).newFeedback(matchId, feedback)).to.be.revertedWith("The caller is not the CodeMaker");
+            });
+
+            it("Should fail if called more than once consecutively by the CodeMaker", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(0, 3);
+
+                await game.connect(codeMaker).newFeedback(matchId, feedback);
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game");
+            });
+
+            it("Should fail if called with an invalid code format", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(5, 5);
+
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.be.revertedWith("Invalid feedback format");
+            });
+
+            it("Should not fail if called from the CodeMaker after the submission of a guess", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(0, 3);
+
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).not.to.be.reverted;
+            });
         });
 
         describe("Events", function () {
+            it("Should emit an event when called by the CodeMaker", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(0, 3);
+
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.emit(game, "FeedbackSubmitted");
+            });
+
+            it("Should emit an event when called by the CodeMaker with valid parameters", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
+                const feedback = newFeedback(0, 3);
+
+                const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
+                const eventInterface = new ethers.Interface(["event FeedbackSubmitted(address id, address from, uint8 feedback)"]);
+                const event = await getEvent(tx, eventInterface, "FeedbackSubmitted");
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.from).to.be.equal(codeMaker.address);
+                expect(event.feedback).to.be.equal(feedback);
+            });
+
+            it("Should emit an event when called by the CodeMaker if the maximum number of guesses is reached", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundLastGuess);
+                const feedback = newFeedback(0, 3);
+
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.emit(game, "RoundEnded");
+            });
+
+            it("Should emit an event when called by the CodeMaker if the maximum number of guesses is reached with valid parameters", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundLastGuess);
+                const feedback = newFeedback(0, 3);
+
+                const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
+                const eventInterface = new ethers.Interface(["event RoundEnded(address id, uint round)"]);
+                const event = await getEvent(tx, eventInterface, "RoundEnded", 1);
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.round).to.be.equal(1);
+            });
+
+            it("Should emit an event when called by the CodeMaker if the feedback regards a correct guess", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilSecondRoundCorrectGuess);
+                const feedback = newFeedback(4, 0);
+
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.emit(game, "RoundEnded");
+            });
+
+            it("Should emit an event when called by the CodeMaker if the feedback regards a correct guess with valid parameters", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilSecondRoundCorrectGuess);
+                const feedback = newFeedback(4, 0);
+
+                const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
+                const eventInterface = new ethers.Interface(["event RoundEnded(address id, uint round)"]);
+                const event = await getEvent(tx, eventInterface, "RoundEnded", 1);
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.round).to.be.equal(2);
+            });
         });
     });
 
