@@ -364,7 +364,6 @@ contract EtherMind {
         bytes4 salt
     )
         external
-        payable
         onlyExistingIds(id)
         onlyGamesInPhase(id, ROUND_END)
         onlyCodeMaker(id)
@@ -405,7 +404,6 @@ contract EtherMind {
         address id
     )
         external
-        payable
         onlyExistingIds(id)
         onlyGamesInPhase(id, ROUND_START)
         onlyCodeMaker(id)
@@ -468,7 +466,6 @@ contract EtherMind {
         address id
     )
         external
-        payable
         onlyExistingIds(id)
         onlyGamesInPhase(
             id,
@@ -509,7 +506,6 @@ contract EtherMind {
         address id
     )
         external
-        payable
         onlyExistingIds(id)
         onlyGamesInPhase(id, GAME_END)
         onlyAllowedPlayers(id)
