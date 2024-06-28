@@ -15,7 +15,6 @@
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.14.2",
     "chai": "^4.4.1",
-    "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
     "hardhat": "^2.22.5",
     "hardhat-gas-reporter": "^2.2.0",
