@@ -1,4 +1,3 @@
- // src/components/GuessForm.tsx
 import React, { useState } from 'react';
 
 interface GuessFormProps {
