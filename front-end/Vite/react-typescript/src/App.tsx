@@ -1,8 +1,12 @@
  
 // src/App.tsx
+import { ethers } from 'ethers';
 import React, { useState } from 'react';
 import { GuessForm } from './component/GuessForm';
 import { FeedBackForm } from './component/Feedback';
+import { NewMatch, joinMatch, proposeStake, uploadHash ,uploadGuess, uploadFeedback, sendSolution, sendDispute, AFKcheck, HaltGame, checkWhoWinner} from './component/contract_interaction';
+
+
 
 enum phase { start, match_waiting, decide_stake, round_play_guesser, round_play_master, round_end_master, round_end_guesser, game_end }
 //just to keep track of the state of the game
@@ -24,6 +28,9 @@ const App: React.FC = () => {
   const [Feedbs, setFeedbs] = useState<number[][]>([]);
 
 
+//TODO HOW DO WE MANAGE AFK CHECK?!??! need to have a button always avaliable...
+
+
   const handleGuess = (guess: number[]) => {
     //TODO CALL CONTRACT FROM HERE
     game_state = phase.round_end_guesser;
@@ -37,22 +44,48 @@ const App: React.FC = () => {
 
   const [inputValuejoinid, setInputValuejoinid] = useState<string>('');
   const [inputValuejoinStake, setInputValuejoinStake] = useState<string>('');
+  const [transactionData, setTransactionData] = useState<ethers.TransactionResponse | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+
   const [inputValueCreateId, setInputValueCreateId] = useState<string>('');
   const [inputStake, setInputStake] = useState<string>('');
 
 
-  const handleSubmit1 = () => {
+  const handleSubmit1 = async  () => {
     console.log('join Submitted:', inputValuejoinid);
     console.log('stake Submitted:', inputValuejoinStake);
-    //TODO call the contract join function from here
+    //convert from string to int
+    const result = await joinMatch(inputValuejoinid,BigInt(inputValuejoinStake));
+      if (result.success) {
+          setTransactionData(result.tx);
+          setError(null);
+          //move to next step
+          game_state = phase.decide_stake;
+      } else {
+          setTransactionData(null);
+          setError(result.error);
+          //print error on screen
+      }
     setInputValuejoinid(''); // Reset the input field after submission
     setInputValuejoinStake(''); // Reset the input field after submission
   };
 
-  const handleSubmit2 = () => {
+
+  const handleSubmit2 = async () => {
     console.log('create Submitted:', inputValueCreateId);
     //TODO call the contract create function from here
-    game_state = phase.match_waiting;
+    const result = await NewMatch(inputValuejoinid);
+      if (result.success) {
+          setTransactionData(result.tx);
+          setError(null);
+          //move to next step
+          game_state = phase.match_waiting;//HOW DO WE MOVE FROM HERE?
+      } else {
+          setTransactionData(null);
+          setError(result.error);
+          //print error on screen
+      }
     setInputValueCreateId(''); // Reset the input field after submission
   };
 
@@ -61,6 +94,9 @@ const App: React.FC = () => {
     //call stake function
     setInputStake(''); // Reset the input field after submission
   };
+
+
+
 
 
 
@@ -85,6 +121,7 @@ if(game_state == phase.start)
           placeholder="Enter initial stake"
         />
         <button onClick={handleSubmit1}>join match</button>
+        <p>{ error?.message }</p> {/* if we get an error it should be shown to the user */} 
       </div>
       <div>
         <h2>Create</h2>
@@ -95,6 +132,7 @@ if(game_state == phase.start)
           placeholder="Enter machID or 0"
         />
         <button onClick={handleSubmit2}>create match</button>
+        <p>{ error?.message }</p> {/* if we get an error it should be shown to the user */} 
       </div>
     </div>
     );
@@ -104,6 +142,7 @@ if(game_state == phase.start)
     return(
       <div>
         <h2>waiting for other player to join</h2>
+        <p>info {transactionData?.from} -- {transactionData?.data} </p>
       </div>
     );
 

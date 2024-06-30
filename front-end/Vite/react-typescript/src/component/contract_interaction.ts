@@ -30,24 +30,11 @@ const wallet = new ethers.Wallet(privateKey, provider);
 const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
 
-// Function to call the withdraw function in the contract
-async function withdraw() {
-    try {
-        const tx = await contract.withdraw();
-        console.log('Transaction:', tx);
-        const receipt = await tx.wait();
-        console.log('Transaction receipt:', receipt);
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
 //if event happened, display on console
 contract.on('MatchCreated', (address,Mid) => {
     console.log(`MatchCreated event: Mid = ${Mid}, by = ${address}`);
 
 });
-
 
 //if event happened, display on console
 contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
@@ -55,13 +42,11 @@ contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
 
 });
 
-
 //if event happened, display on console
 contract.on('StakeProposal', (Mid, proposal) => {
     console.log(`StakeProposal event: Mid = ${Mid}, stake = ${proposal}`);
 
 });
-
 
 //if event happened, display on console
 contract.on('StakeFixed', (Mid, stake) => {
@@ -69,13 +54,11 @@ contract.on('StakeFixed', (Mid, stake) => {
 
 });
 
-
 //if event happened, display on console
 contract.on('StakePayed', (Mid, player) => {
     console.log(`StakePayed event: Mid = ${Mid}, address = ${player}`);
 
 });
-
 
 //if event happened, display on console
 contract.on('GameStarted', (Mid) => {
@@ -83,13 +66,11 @@ contract.on('GameStarted', (Mid) => {
 
 });
 
-
 //if event happened, display on console
 contract.on('RoundStarted', (Mid, round, codeMaddress, codeBaddress) => {
     console.log(`RoundStarted event: Mid = ${Mid}, n rounds = ${round}, codemaster = ${codeMaddress}, codebreaker = ${codeBaddress}`);
 
 });
-
 
 //if event happened, display on console
 contract.on('GuessSubmitted', (Mid, address, guess) => {
@@ -97,13 +78,11 @@ contract.on('GuessSubmitted', (Mid, address, guess) => {
 
 });
 
-
 //if event happened, display on console
 contract.on('FeedbackSubmitted', (Mid, address, feedback) => {
     console.log(`FeedbackSubmitted event: Mid = ${Mid}, by = ${address}, clue = ${feedback}`);
 
 });
-
 
 //if event happened, display on console
 contract.on('SolutionHashSubmitted', (Mid, address) => {
@@ -111,13 +90,11 @@ contract.on('SolutionHashSubmitted', (Mid, address) => {
 
 });
 
-
 //if event happened, display on console
 contract.on('SolutionSubmitted', (Mid, address, solution) => {
     console.log(`SolutionSubmitted event: Mid = ${Mid}, by = ${address}, solution = ${solution}`);
 
 });
-
 
 //if event happened, display on console
 contract.on('ScoresUpdated', (Mid, crsore, chscore) => {
@@ -131,13 +108,11 @@ contract.on('AFKCheckStarted', (Mid, address, timestamp) => {
 
 });
 
-
 //if event happened, display on console
 contract.on('GameEnded', (Mid) => {
     console.log(`GameEnded event: Mid = ${Mid}`);
     //TODO say depending on the returned points who won
 });
-
 
 //if event happened, display on console
 contract.on('MatchEnded', (Mid) => {
@@ -163,7 +138,6 @@ contract.on('RewardDispensed', (Mid, address, currentStake) => {
     //TODO say depending on the returned points who won
 });
 
-
 //if event happened, display on console
 contract.on('Failure', (message) => {
     console.log(`Failure event: Mid = ${message}`);
@@ -171,42 +145,58 @@ contract.on('Failure', (message) => {
 });
 
 
-
-//now the functions
-
-
-
-async function NewMatch(otherPlayerAddress: string) {
+function check_player_address(otherPlayerAddress: string){
     // Validate the address
     if (!ethers.isAddress(otherPlayerAddress)) {
         throw new Error('Invalid otherplayer address');
     }
+}
+
+
+
+
+//now the functions
+
+type CreateMatchResult = 
+  | { success: true; tx: ethers.TransactionResponse }
+  | { success: false; error: Error };
+
+export async function NewMatch(otherPlayerAddress: string) : Promise<CreateMatchResult> {
+    
     try {
+        check_player_address(otherPlayerAddress);
         const tx = await contract.createMatch(otherPlayerAddress);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
+        return { success: true, tx };
 
     } catch (error) {
         console.error('Error:', error);
+        return { success: false, error: error as Error  };   
     }
 }
 
 
-async function joinMatch(Address: string, stake: bigint) {
+type JoinMatchResult = 
+  | { success: true; tx: ethers.TransactionResponse }
+  | { success: false; error: Error };
+
+export async function joinMatch(Address: string, stake: bigint): Promise<JoinMatchResult> {
     try {
+        //as long as it is properly formatted the conversion string->address should be handlesd by itself
         const tx = await contract.joinMatch(Address,stake);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        //return the result and some data
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        return { success: false, error: error as Error  };    
     }
 }
 
 
-async function proposeStake(Address: string, stake: bigint) {
+export async function proposeStake(Address: string, stake: bigint) {
     try {
         const tx = await contract.stakeProposal(Address,stake);
         console.log('Transaction:', tx);
@@ -220,7 +210,7 @@ async function proposeStake(Address: string, stake: bigint) {
 
 
 
-async function uploadHash(matchID: string, SecretCode: string) {
+export async function uploadHash(matchID: string, SecretCode: string) {
     //hash secret code, convert it to string using Hex encoder
     let generated_signature = CryptoJS.SHA256(SecretCode).toString(CryptoJS.enc.Hex);
     try {
@@ -234,7 +224,7 @@ async function uploadHash(matchID: string, SecretCode: string) {
     }
 }
 
-async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
         const tx = await contract.newGuess(matchID, guess);
         console.log('Transaction:', tx);
@@ -248,7 +238,7 @@ async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CAUSE PRO
 
 
 
-async function uploadFeedback(matchID: number, feedback: Feedb) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function uploadFeedback(matchID: number, feedback: Feedb) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
         const tx = await contract.newFeedback(matchID, feedback);
         console.log('Transaction:', tx);
@@ -261,7 +251,7 @@ async function uploadFeedback(matchID: number, feedback: Feedb) {//THIS *MAY* CA
 }
 
 
-async function sendSolution(matchID: number, solution: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function sendSolution(matchID: number, solution: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
         const tx = await contract.uploadSolution(matchID, solution);
         console.log('Transaction:', tx);
@@ -275,7 +265,7 @@ async function sendSolution(matchID: number, solution: Move) {//THIS *MAY* CAUSE
 
 
 
-async function sendDispute(matchID: number) {
+export async function sendDispute(matchID: number) {
     try {
         const tx = await contract.dispute(matchID);
         console.log('Transaction:', tx);
@@ -289,7 +279,7 @@ async function sendDispute(matchID: number) {
 
 
 
-async function AFKcheck(matchID: number) {
+export async function AFKcheck(matchID: number) {
     try {
         const tx = await contract.startAfkCheck(matchID);
         console.log('Transaction:', tx);
@@ -302,7 +292,7 @@ async function AFKcheck(matchID: number) {
 }
 
 
-async function HaltGame(matchID: number) {
+export async function HaltGame(matchID: number) {
     try {
         const tx = await contract.stopMatchForAfk(matchID);
         console.log('Transaction:', tx);
@@ -315,7 +305,7 @@ async function HaltGame(matchID: number) {
 }
 
 
-async function checkWhoWinner(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function checkWhoWinner(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
         const tx = await contract.checkWinner(matchID);
         console.log('Transaction:', tx);
@@ -331,7 +321,6 @@ async function checkWhoWinner(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN T
 
 
 
-// Call the withdraw function
-withdraw();
+
 
 
