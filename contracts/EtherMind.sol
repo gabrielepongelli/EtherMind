@@ -448,6 +448,8 @@ contract EtherMind {
     {
         Game storage game = matchReg.getMatch(id);
 
+        require(!game.isAfkTimerStarted(), "AFK check already started");
+
         // check that whoever is calling is in the position to wait the other
         require(
             game.canStartAfkTimer(msg.sender),
