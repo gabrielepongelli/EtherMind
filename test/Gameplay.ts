@@ -754,8 +754,8 @@ describe("Gameplay", function () {
 
                 await game.connect(codeBreaker).checkWinner(matchId);
 
-                // in this case if the error is that the operation is not 
-                // permitted it means that the match is ended
+                // in this case if the error is that the match specified 
+                // doesn't exist it means that the match has been deleted
                 await expect(game.connect(codeBreaker).checkWinner(matchId)).to.be.revertedWith("The match specified does not exist");
             });
         });
