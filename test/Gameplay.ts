@@ -1,10 +1,15 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getEvent, newCode, hashCode, newFeedback, prepareSalt } from "./utils/utils";
+import { getEvent, newCode, hashCode, newFeedback, prepareSalt, setAutoMine, mineBlocks, assertDefined } from "./utils/utils";
 import { phases } from "./utils/phases";
 
 describe("Gameplay", function () {
+    afterEach(async function () {
+        // just to be sure
+        await setAutoMine(true);
+    });
+
     describe("Solution hash submission", function () {
         describe("Validation", function () {
             it("Should fail if an invalid match ID is passed", async function () {
@@ -691,25 +696,197 @@ describe("Gameplay", function () {
         });
     });
 
-    describe("Dispute", function () {
+    describe("Winner rewarding", function () {
         describe("Validation", function () {
+            it("Should fail if an invalid match ID is passed", async function () {
+                const { game } = await loadFixture(phases.untilLastRoundSolution);
+                const invalidMatchId = ethers.ZeroAddress;
+
+                await expect(game.checkWinner(invalidMatchId)).to.be.revertedWith("The match specified does not exist");
+            });
+
+            it("Should fail if called on a match that is in the wrong phase", async function () {
+                for (const phaseFn of Object.values(phases)) {
+                    if (phaseFn == phases.untilLastRoundSolution) {
+                        return;
+                    }
+
+                    const { game, challenger, matchId } = await loadFixture(phaseFn);
+
+                    await expect(game.checkWinner(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.connect(challenger).checkWinner(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                }
+            });
+
+            it("Should fail if called by someone which is not part of the match", async function () {
+                const { game, matchId, otherPlayer } = await loadFixture(phases.untilLastRoundSolution);
+
+                await expect(game.connect(otherPlayer).checkWinner(matchId)).to.be.revertedWith("You are not part of the match specified");
+            });
+
+            it("Should fail if called by the CodeMaker before the dispute time is ended", async function () {
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                await expect(game.connect(codeMaker).checkWinner(matchId)).to.be.revertedWith("You must first wait for the dispute time");
+            });
+
+            it("Should not fail if called by the CodeMaker after the dispute time is ended", async function () {
+                const AVG_BLOCK_TIME = 12;
+                const WAIT_UNTIL = 90;
+
+                const { game, matchId, codeMaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                await setAutoMine(false);
+                await mineBlocks(AVG_BLOCK_TIME * WAIT_UNTIL);
+                await setAutoMine(true);
+
+                await expect(game.connect(codeMaker).checkWinner(matchId)).not.to.be.reverted;
+            });
+
+            it("Should not fail if called by the CodeBreaker", async function () {
+                const { game, matchId, codeBreaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).not.to.be.reverted;
+            });
+
+            it("Should terminate the match", async function () {
+                const { game, matchId, codeBreaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                await game.connect(codeBreaker).checkWinner(matchId);
+
+                // in this case if the error is that the operation is not 
+                // permitted it means that the match is ended
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.be.revertedWith("The match specified does not exist");
+            });
         });
 
         describe("Events", function () {
+            it("Should emit an event when called signaling that the match is ended", async function () {
+                const { game, matchId, codeBreaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.emit(game, "MatchEnded");
+            });
+
+            it("Should emit an event when called signaling that the match is ended with valid parameters", async function () {
+                const { game, matchId, codeBreaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                const tx = await game.connect(codeBreaker).checkWinner(matchId);
+                const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
+
+                expect(event.id).to.be.equal(matchId);
+            });
+
+            it("Should emit a single event when called if there is a single winner signaling that the reward has been dispensed", async function () {
+                const { game, matchId, codeBreaker } = await loadFixture(phases.untilLastRoundSolution);
+
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.emit(game, "RewardDispensed");
+            });
+
+            it("Should emit a single event when called if there is a single winner signaling that the reward has been dispensed with valid parameters", async function () {
+                const { game, matchId, codeBreaker, finalStake } = await loadFixture(phases.untilLastRoundSolution);
+
+                const tx = await game.connect(codeBreaker).checkWinner(matchId);
+                const eventInterface = new ethers.Interface(["event RewardDispensed(address id, address to, uint reward)"]);
+                const event = await getEvent(tx, eventInterface, "RewardDispensed");
+
+                expect(event.id).to.be.equal(matchId);
+                expect(event.to).to.be.equal(codeBreaker.address);
+                expect(event.reward).to.be.equal(finalStake * 2);
+            });
+
+            it("Should emit two events when called if the game ended in a draw signaling that the rewards have been dispensed", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phases.untilLastRoundSecondLastFeedback);
+
+                // submit wrong guess
+                const colors = { c0: 1, c1: 2, c2: 3, c3: 4 };
+                const code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
+                await game.connect(codeBreaker).newGuess(matchId, code);
+
+                // submit feedback
+                const hints = { cp: 0, np: 3 };
+                const feedback = newFeedback(hints.cp, hints.np);
+                await game.connect(codeMaker).newFeedback(matchId, feedback);
+
+                // submit final solution
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)
+
+                const tx = await game.connect(codeBreaker).checkWinner(matchId);
+                const eventInterface = new ethers.Interface(["event RewardDispensed(address id, address to, uint reward)"]);
+                const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+
+                expect(eventInterface.decodeEventLog("RewardDispensed", assertDefined(receipt?.logs[0].data), receipt?.logs[0].topics)).not.to.throw;
+
+                expect(eventInterface.decodeEventLog("RewardDispensed", assertDefined(receipt?.logs[1].data), receipt?.logs[1].topics)).not.to.throw;
+            });
+
+            it("Should emit two events when called if the game ended in a draw signaling that the rewards have been dispensed with valid parameters", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution, finalStake, creator, challenger } = await loadFixture(phases.untilLastRoundSecondLastFeedback);
+
+                // submit wrong guess
+                const colors = { c0: 1, c1: 2, c2: 3, c3: 4 };
+                const code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
+                await game.connect(codeBreaker).newGuess(matchId, code);
+
+                // submit feedback
+                const hints = { cp: 0, np: 3 };
+                const feedback = newFeedback(hints.cp, hints.np);
+                await game.connect(codeMaker).newFeedback(matchId, feedback);
+
+                // submit final solution
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)
+
+                const tx = await game.connect(codeBreaker).checkWinner(matchId);
+                const eventInterface = new ethers.Interface(["event RewardDispensed(address id, address to, uint reward)"]);
+                const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+
+                const firstEvent = eventInterface.decodeEventLog("RewardDispensed", assertDefined(receipt?.logs[0].data), receipt?.logs[0].topics);
+                const secondEvent = eventInterface.decodeEventLog("RewardDispensed", assertDefined(receipt?.logs[1].data), receipt?.logs[1].topics);
+
+                expect(firstEvent.id).to.be.equal(matchId);
+                expect(secondEvent.id).to.be.equal(matchId);
+
+                expect(firstEvent.reward).to.be.equal(finalStake);
+                expect(secondEvent.reward).to.be.equal(finalStake);
+
+                expect(firstEvent.to).to.be.equal(creator.address);
+                expect(secondEvent.to).to.be.equal(challenger.address);
+            });
         });
 
         describe("Transactions", function () {
-        });
-    });
+            it("Should transfer all the stake amount to the winner if there is a single winner", async function () {
+                const { game, matchId, codeBreaker, finalStake } = await loadFixture(phases.untilLastRoundSolution);
 
-    describe("AFK check", function () {
-        describe("Validation", function () {
-        });
+                const totalStakeAmount = finalStake * 2;
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.changeEtherBalances(
+                    [codeBreaker, game],
+                    [totalStakeAmount, -totalStakeAmount]
+                );
+            });
 
-        describe("Events", function () {
-        });
+            it("Should transfer half of the stake amount to each player if the game ended in a draw", async function () {
+                const { game, matchId, codeMaker, codeBreaker, solution, finalStake, creator, challenger } = await loadFixture(phases.untilLastRoundSecondLastFeedback);
 
-        describe("Transactions", function () {
+                // submit wrong guess
+                const colors = { c0: 1, c1: 2, c2: 3, c3: 4 };
+                const code = newCode(colors.c0, colors.c1, colors.c2, colors.c3);
+                await game.connect(codeBreaker).newGuess(matchId, code);
+
+                // submit feedback
+                const hints = { cp: 0, np: 3 };
+                const feedback = newFeedback(hints.cp, hints.np);
+                await game.connect(codeMaker).newFeedback(matchId, feedback);
+
+                // submit final solution
+                await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)
+
+                const totalStakeAmount = finalStake * 2;
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.changeEtherBalances(
+                    [creator, challenger, game],
+                    [finalStake, finalStake, -totalStakeAmount]
+                );
+            });
         });
     });
 })
