@@ -338,7 +338,6 @@ library GameOp {
         bytes4 salt
     ) internal returns (bool) {
         self.solution = solution;
-        self.flags = (self.flags - CM_WAITING) + CB_WAITING;
         return self.hashedSolution == solution.hashCode(salt);
     }
 
