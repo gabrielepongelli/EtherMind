@@ -416,7 +416,7 @@ contract EtherMind {
         );
 
         require(
-            game.isDisputeTimerEnded(block.number),
+            !game.isDisputeTimerEnded(block.number),
             "The request is too late, dispute refuted"
         );
 
