@@ -153,28 +153,28 @@ library FeedbackOp {
         uint8 correctPosition = 0;
         uint8 correctColor = 0;
 
-        bool[N_COMBINATIONS] memory isCorrectColorAndPos;
-        bool[N_COMBINATIONS] memory pairedPos;
+        bool[N_COMBINATIONS] memory solutionUsedPos;
+        bool[N_COMBINATIONS] memory guessUsedPos;
 
         // count the correct positions (and correct colors)
         for (uint8 i = 0; i < N_COMBINATIONS; i++) {
             if (guess.getColor(i) == solution.getColor(i)) {
                 correctPosition++;
-                isCorrectColorAndPos[i] = true;
-                pairedPos[i] = true;
+                solutionUsedPos[i] = true;
+                guessUsedPos[i] = true;
             }
         }
 
         // count the correct colors in the wrong positions
         for (uint8 i = 0; i < N_COMBINATIONS; i++) {
-            if (!isCorrectColorAndPos[i]) {
-                for (uint8 j = i + 1; j < N_COMBINATIONS; j++) {
+            if (!solutionUsedPos[i]) {
+                for (uint8 j = 0; j < N_COMBINATIONS; j++) {
                     if (
-                        !pairedPos[j] &&
+                        !guessUsedPos[j] &&
                         solution.getColor(i) == guess.getColor(j)
                     ) {
                         correctColor++;
-                        pairedPos[j] = true;
+                        guessUsedPos[j] = true;
                         break;
                     }
                 }
@@ -196,7 +196,6 @@ library FeedbackOp {
         Code solution,
         Code guess
     ) internal pure returns (bool) {
-        Feedback generatedFeedback = generateFeedback(solution, guess);
-        return generatedFeedback == feedback;
+        return feedback == generateFeedback(solution, guess);
     }
 }
