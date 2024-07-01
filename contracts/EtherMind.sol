@@ -531,13 +531,15 @@ contract EtherMind {
             // transfer the amount to the winner
             // double the stake because
             winner.transfer(game.stake * 2);
+            emit RewardDispensed(id, msg.sender, game.stake * 2);
         } else {
             // it's a draw
             payable(game.creator).transfer(game.stake);
             payable(game.challenger).transfer(game.stake);
-        }
 
-        emit RewardDispensed(id, msg.sender, game.stake);
+            emit RewardDispensed(id, game.creator, game.stake);
+            emit RewardDispensed(id, game.challenger, game.stake);
+        }
 
         matchReg.deleteMatch(id);
         emit MatchEnded(id);
