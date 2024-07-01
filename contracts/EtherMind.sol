@@ -129,9 +129,11 @@ contract EtherMind {
     function punish(address id, address player, string memory reason) internal {
         Game storage game = matchReg.getMatch(id);
 
+        uint256 totalStake = game.stake * 2;
+
         // it should pass, it's just to make sure
         require(
-            address(this).balance >= game.stake * 2,
+            address(this).balance >= totalStake,
             "Insufficient balance in contract"
         );
 
@@ -139,8 +141,10 @@ contract EtherMind {
             game.isCodeMaker(player) ? game.codeBreaker() : game.codeMaker()
         );
 
-        playerToPay.transfer(game.stake * 2);
+        matchReg.deleteMatch(id);
+        playerToPay.transfer(totalStake);
         emit PlayerPunished(id, player, reason);
+        emit MatchEnded(id);
     }
 
     /**
@@ -391,8 +395,6 @@ contract EtherMind {
         } else {
             // solution dosen't match -> punish CodeMaker
             punish(id, msg.sender, "Wrong solution provided");
-            matchReg.deleteMatch(id);
-            emit MatchEnded(id);
         }
     }
 
@@ -426,9 +428,6 @@ contract EtherMind {
             // cheating detected, punish the OLD CodeMaker (the NEW CodeBreaker)
             punish(id, game.codeBreaker(), "Player provided false feedbacks");
         }
-
-        matchReg.deleteMatch(id);
-        emit MatchEnded(id);
     }
 
     /**
@@ -489,15 +488,16 @@ contract EtherMind {
             punish(id, game.codeBreaker(), "Player is AFK");
         } else {
             // invalid state, return stakes and end the match
-            payable(game.creator).transfer(game.stake);
-            payable(game.challenger).transfer(game.stake);
-            emit Failure("Internal error");
+            address payable creator = payable(game.creator);
+            address payable challenger = payable(game.challenger);
+            uint256 refundAmount = game.stake;
+
             matchReg.deleteMatch(id);
+            creator.transfer(refundAmount);
+            challenger.transfer(refundAmount);
+            emit Failure("Internal error");
             emit MatchEnded(id);
         }
-
-        matchReg.deleteMatch(id);
-        emit MatchEnded(id);
     }
 
     /**
@@ -532,18 +532,24 @@ contract EtherMind {
         if (winner != address(0)) {
             // transfer the amount to the winner
             // double the stake because
-            winner.transfer(game.stake * 2);
-            emit RewardDispensed(id, msg.sender, game.stake * 2);
+            uint256 totalStake = game.stake * 2;
+            matchReg.deleteMatch(id);
+            winner.transfer(totalStake);
+            emit RewardDispensed(id, msg.sender, totalStake);
         } else {
             // it's a draw
-            payable(game.creator).transfer(game.stake);
-            payable(game.challenger).transfer(game.stake);
+            uint256 totalStake = game.stake;
+            address payable creator = payable(game.creator);
+            address payable challenger = payable(game.challenger);
 
-            emit RewardDispensed(id, game.creator, game.stake);
-            emit RewardDispensed(id, game.challenger, game.stake);
+            matchReg.deleteMatch(id);
+            creator.transfer(totalStake);
+            challenger.transfer(totalStake);
+
+            emit RewardDispensed(id, game.creator, totalStake);
+            emit RewardDispensed(id, game.challenger, totalStake);
         }
 
-        matchReg.deleteMatch(id);
         emit MatchEnded(id);
     }
 }
