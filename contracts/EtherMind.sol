@@ -546,8 +546,8 @@ contract EtherMind {
             creator.transfer(totalStake);
             challenger.transfer(totalStake);
 
-            emit RewardDispensed(id, game.creator, totalStake);
-            emit RewardDispensed(id, game.challenger, totalStake);
+            emit RewardDispensed(id, creator, totalStake);
+            emit RewardDispensed(id, challenger, totalStake);
         }
 
         emit MatchEnded(id);
