@@ -123,6 +123,9 @@ library GameOp {
     function startAfkTimer(Game storage self, uint256 blockNumber) internal {
         self.flags = self.flags + AFK_CHECK_ACTIVE;
         self.afkBlock = blockNumber;
+        self.afkBlock =
+            blockNumber +
+            (Configs.AFK_MAX * Configs.AVG_BLOCK_TIME);
     }
 
     /**
@@ -150,9 +153,7 @@ library GameOp {
         Game storage self,
         uint256 blockNumber
     ) internal view returns (bool) {
-        return
-            self.afkBlock + (Configs.AFK_MAX / Configs.AVG_BLOCK_TIME) <
-            blockNumber;
+        return blockNumber > self.afkBlock;
     }
 
     /**
@@ -418,7 +419,7 @@ library GameOp {
     ) internal {
         self.disputeBlock =
             blockNumber +
-            (Configs.WAIT_UNTIL / Configs.AVG_BLOCK_TIME);
+            (Configs.WAIT_UNTIL * Configs.AVG_BLOCK_TIME);
     }
 
     /**
@@ -430,6 +431,6 @@ library GameOp {
         Game storage self,
         uint256 blockNumber
     ) internal view returns (bool) {
-        return self.disputeBlock > blockNumber;
+        return blockNumber > self.disputeBlock;
     }
 }
