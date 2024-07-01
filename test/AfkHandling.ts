@@ -126,13 +126,11 @@ describe("AFK handling", function () {
             });
 
             it("Should emit an event when called by the right player signaling that the timer is started with valid parameters", async function () {
-                console.log("code maker moves");
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
-                    console.log(phaseFn.name);
                     const tx = await game.connect(codeBreaker).startAfkCheck(matchId);
-                    const eventInterface = new ethers.Interface(["AfkCheckStarted(address id, address from, uint256 time)"]);
+                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address id, address from, uint256 time)"]);
                     const event = await getEvent(tx, eventInterface, "AfkCheckStarted");
 
                     expect(event.id).to.be.equal(matchId);
@@ -140,13 +138,11 @@ describe("AFK handling", function () {
                     expect(event.time).to.be.equal(180);
                 }
 
-                console.log("code breaker moves");
                 for (const phaseFn of Object.values(codeBreakerShouldMove)) {
                     const { game, matchId, codeMaker } = await loadFixture(phaseFn);
 
-                    console.log(phaseFn.name);
                     const tx = await game.connect(codeMaker).startAfkCheck(matchId);
-                    const eventInterface = new ethers.Interface(["AfkCheckStarted(address id, address from, uint256 time)"]);
+                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address id, address from, uint256 time)"]);
                     const event = await getEvent(tx, eventInterface, "AfkCheckStarted");
 
                     expect(event.id).to.be.equal(matchId);
