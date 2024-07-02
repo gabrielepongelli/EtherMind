@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import CryptoJS from 'crypto-js';
+import { abi as contractAbi } from '../../../artifacts/contracts/EtherMind.sol/EtherMind.json';
 
 interface Move {
     pos1: number;
@@ -18,16 +19,12 @@ const infuraProjectId = 'a270745867ac48f29fb7d90e316e1402';
 const provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/${infuraProjectId}`);
 // Contract details
 const contractAddress = '0x18E1039F024b73aB3B45377A127662104D67Cb96';
-//In order to communicate with the Contract on-chain, must know what methods are available and how to encode and decode the data
-const contractABI =
-    [{ "inputs": [{ "internalType": "uint256", "name": "_unlockTime", "type": "uint256" }], "stateMutability": "payable", "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }, { "indexed": false, "internalType": "uint256", "name": "when", "type": "uint256" }], "name": "Withdrawal", "type": "event" }, { "inputs": [], "name": "owner", "outputs": [{ "internalType": "address payable", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "unlockTime", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" }]
-    ;
 
 //this is if you need to get payed
 const privateKey = '7f0a2326943793a9f62333715e771ee1b42a643289299f8e927bd15fd98fb02b';
 const wallet = new ethers.Wallet(privateKey, provider);
 
-const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+const contract = new ethers.Contract(contractAddress, contractAbi, wallet);
 
 
 //if event happened, display on console
@@ -104,8 +101,8 @@ contract.on('ScoresUpdated', (Mid, crsore, chscore) => {
 });
 
 //if event happened, display on console
-contract.on('AFKCheckStarted', (Mid, address, timestamp) => {
-    console.log(`AFKCheckStarted event:  Mid = ${Mid}, by = ${address}, timestamp = ${timestamp}`);
+contract.on('AfkCheckStarted', (Mid, address, timestamp) => {
+    console.log(`AfkCheckStarted event:  Mid = ${Mid}, by = ${address}, timestamp = ${timestamp}`);
 
 });
 
