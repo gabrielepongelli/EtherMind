@@ -14,7 +14,7 @@ enum phase { start, match_waiting, decide_stake, round_play_guesser, round_play_
 
 
 
-let game_state = phase.game_end;
+let game_state = phase.start;
 let REASON_OF_MATCH_END : string;
 let points_CR : number;
 let points_CH : number;
@@ -52,16 +52,18 @@ const App: React.FC = () => {
   const [inputStake, setInputStake] = useState<string>('');
 
 
-  const handleSubmit1 = async  () => {
+  const handleSubmitJoin = async  () => {
     console.log('join Submitted:', inputValuejoinid);
     console.log('stake Submitted:', inputValuejoinStake);
     //convert from string to int
     const result = await joinMatch(inputValuejoinid,BigInt(inputValuejoinStake));
-      if (result.success) {
+      if (result.success) { //TRANSACTION is a success NOT join!... i think
           setTransactionData(result.tx);
           setError(null);
-          //move to next step
-          game_state = phase.decide_stake;
+          //move to next step IF EVENT IS CALLED
+          /*if(???){
+            game_state = phase.decide_stake;
+          }*/
       } else {
           setTransactionData(null);
           setError(result.error);
@@ -72,7 +74,7 @@ const App: React.FC = () => {
   };
 
 
-  const handleSubmit2 = async () => {
+  const handleSubmitCreate = async () => {
     console.log('create Submitted:', inputValueCreateId);
     //TODO call the contract create function from here
     const result = await NewMatch(inputValuejoinid);
@@ -120,7 +122,7 @@ if(game_state == phase.start)
           onChange={(e) => setInputValuejoinStake(e.target.value)}
           placeholder="Enter initial stake"
         />
-        <button onClick={handleSubmit1}>join match</button>
+        <button onClick={handleSubmitJoin}>join match</button>
         <p>{ error?.message }</p> {/* if we get an error it should be shown to the user */} 
       </div>
       <div>
@@ -131,36 +133,36 @@ if(game_state == phase.start)
           onChange={(e) => setInputValueCreateId(e.target.value)}
           placeholder="Enter machID or 0"
         />
-        <button onClick={handleSubmit2}>create match</button>
+        <button onClick={handleSubmitCreate}>create match</button>
         <p>{ error?.message }</p> {/* if we get an error it should be shown to the user */} 
       </div>
     </div>
     );
 
   }else if(game_state == phase.match_waiting){
-    //ADD SOME EXTRA INFO ON CREATED GAME LOBBY
     return(
       <div>
         <h2>waiting for other player to join</h2>
-        <p>info {transactionData?.from} -- {transactionData?.data} </p>
+        <p>info {transactionData?.from} -- {transactionData?.data} </p> {/* room info shown to the user */}
       </div>
     );
 
   }else if(game_state == phase.decide_stake){
     return(//TO DO ADD A WAY TO DISPLAY CURRENT STAKE WHEN AGREE MOVE TO NEXT STEP
       <div>
-      <h2>Agree on stake of the game</h2>
-      <input
-        type="number"
-        value={inputStake}
-        onChange={(e) => setInputStake(e.target.value)}
-        placeholder="Enter stake"
-      />
-      <button onClick={handleStake}>Submit</button>
-      <div>
-        <h3>current stake</h3>
+        <h2>Agree on stake of the game</h2>
+        <input
+          type="number"
+          value={inputStake}
+          onChange={(e) => setInputStake(e.target.value)}
+          placeholder="Enter stake"
+        />
+        <button onClick={handleStake}>Submit</button>
+        <div>
+          <h1>current stake</h1>
+          
+        </div>
       </div>
-    </div>
     );
   }else if(game_state == phase.round_play_guesser){
     //HERE FEEDBACKS MUST BE SHOWN
