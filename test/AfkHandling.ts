@@ -284,7 +284,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await expect(game.stopMatchForAfk(matchId)).not.to.be.reverted;
@@ -296,7 +296,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await expect(game.stopMatchForAfk(matchId)).not.to.be.reverted;
@@ -313,7 +313,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await game.stopMatchForAfk(matchId);
@@ -329,7 +329,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await game.stopMatchForAfk(matchId);
@@ -352,7 +352,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await expect(game.stopMatchForAfk(matchId)).to.emit(game, "MatchEnded");
@@ -364,7 +364,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await expect(game.stopMatchForAfk(matchId)).to.emit(game, "MatchEnded");
@@ -381,7 +381,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
@@ -397,7 +397,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
@@ -418,7 +418,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await expect(game.stopMatchForAfk(matchId)).to.emit(game, "PlayerPunished");
@@ -430,7 +430,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     await expect(game.stopMatchForAfk(matchId)).to.emit(game, "PlayerPunished");
@@ -447,7 +447,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
@@ -465,7 +465,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
@@ -490,7 +490,7 @@ describe("AFK handling", function () {
                     await game.connect(codeBreaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     const totalStakeAmount = finalStake * 2;
@@ -506,7 +506,7 @@ describe("AFK handling", function () {
                     await game.connect(codeMaker).startAfkCheck(matchId);
 
                     await setAutoMine(false);
-                    await mineBlocks(AVG_BLOCK_TIME * MAX_AFK_TIME);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
                     await setAutoMine(true);
 
                     const totalStakeAmount = finalStake * 2;

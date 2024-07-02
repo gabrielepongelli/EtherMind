@@ -125,7 +125,7 @@ library GameOp {
         self.afkBlock = blockNumber;
         self.afkBlock =
             blockNumber +
-            (Configs.AFK_MAX * Configs.AVG_BLOCK_TIME);
+            (Configs.AFK_MAX / Configs.AVG_BLOCK_TIME);
     }
 
     /**
@@ -418,7 +418,7 @@ library GameOp {
     ) internal {
         self.disputeBlock =
             blockNumber +
-            (Configs.WAIT_UNTIL * Configs.AVG_BLOCK_TIME);
+            (Configs.WAIT_UNTIL / Configs.AVG_BLOCK_TIME);
     }
 
     /**
