@@ -53,7 +53,7 @@ describe("Dispute handling", function () {
             const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundSolution);
 
             await setAutoMine(false);
-            await mineBlocks(AVG_BLOCK_TIME * WAIT_UNTIL);
+            await mineBlocks(WAIT_UNTIL / AVG_BLOCK_TIME);
             await setAutoMine(true);
 
             await expect(game.connect(codeMaker).dispute(matchId)).to.be.revertedWith("The request is too late, dispute refuted");
