@@ -45,7 +45,8 @@ contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
 //if event happened, display on console
 contract.on('StakeProposal', (Mid, proposal) => {
     console.log(`StakeProposal event: Mid = ${Mid}, stake = ${proposal}`);
-
+    //show new proposed stake to the user
+    
 });
 
 //if event happened, display on console
