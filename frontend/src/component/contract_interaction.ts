@@ -1,18 +1,8 @@
 import { ethers } from 'ethers';
-import CryptoJS from 'crypto-js';
 import { abi as contractAbi } from '../../../artifacts/contracts/EtherMind.sol/EtherMind.json';
+import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
 
-interface Move {
-    pos1: number;
-    pos2: number;
-    pos3: number;
-    pos4: number;
-}
 
-interface Feedb {
-    wrong_pos: number;
-    correct: number;
-}
 
 // Connect to Ethereum using Infura
 const infuraProjectId = 'a270745867ac48f29fb7d90e316e1402';
@@ -193,7 +183,6 @@ export async function joinMatch(Address: string, stake: bigint): Promise<JoinMat
     }
 }
 
-
 export async function proposeStake(Address: string, stake: bigint) {
     try {
         const tx = await contract.stakeProposal(Address, stake);
@@ -206,13 +195,10 @@ export async function proposeStake(Address: string, stake: bigint) {
     }
 }
 
-
-
-export async function uploadHash(matchID: string, SecretCode: string) {
-    //hash secret code, convert it to string using Hex encoder
-    let generated_signature = CryptoJS.SHA256(SecretCode).toString(CryptoJS.enc.Hex);
+export async function uploadHash(matchID: string, solution: Code, salt: number) {
+    let hashedSolution = hashCode(solution, salt);
     try {
-        const tx = await contract.newSolutionHash(matchID, generated_signature);
+        const tx = await contract.newSolutionHash(matchID, hashedSolution);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
@@ -222,7 +208,7 @@ export async function uploadHash(matchID: string, SecretCode: string) {
     }
 }
 
-export async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function uploadGuess(matchID: number, guess: Code) {
     try {
         const tx = await contract.newGuess(matchID, guess);
         console.log('Transaction:', tx);
@@ -234,9 +220,7 @@ export async function uploadGuess(matchID: number, guess: Move) {//THIS *MAY* CA
     }
 }
 
-
-
-export async function uploadFeedback(matchID: number, feedback: Feedb) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function uploadFeedback(matchID: number, feedback: Feedback) {
     try {
         const tx = await contract.newFeedback(matchID, feedback);
         console.log('Transaction:', tx);
@@ -248,10 +232,9 @@ export async function uploadFeedback(matchID: number, feedback: Feedb) {//THIS *
     }
 }
 
-
-export async function sendSolution(matchID: number, solution: Move) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export async function sendSolution(matchID: number, solution: Code, salt: number) {
     try {
-        const tx = await contract.uploadSolution(matchID, solution);
+        const tx = await contract.uploadSolution(matchID, solution, prepareSalt(salt));
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
@@ -260,8 +243,6 @@ export async function sendSolution(matchID: number, solution: Move) {//THIS *MAY
         console.error('Error:', error);
     }
 }
-
-
 
 export async function sendDispute(matchID: number) {
     try {
@@ -275,8 +256,6 @@ export async function sendDispute(matchID: number) {
     }
 }
 
-
-
 export async function AFKcheck(matchID: number) {
     try {
         const tx = await contract.startAfkCheck(matchID);
@@ -289,7 +268,6 @@ export async function AFKcheck(matchID: number) {
     }
 }
 
-
 export async function HaltGame(matchID: number) {
     try {
         const tx = await contract.stopMatchForAfk(matchID);
@@ -301,7 +279,6 @@ export async function HaltGame(matchID: number) {
         console.error('Error:', error);
     }
 }
-
 
 export async function checkWhoWinner(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
     try {
