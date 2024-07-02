@@ -72,7 +72,7 @@ describe("Stake payment", function () {
             const { game, creator, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
 
             const tx = await game.payStake(matchId, { value: finalStake });
-            const eventInterface = new ethers.Interface(["event StakePayed(address id, address player)"]);
+            const eventInterface = new ethers.Interface(["event StakePayed(address indexed id, address player)"]);
             const event = await getEvent(tx, eventInterface, "StakePayed");
 
             expect(event.id).to.be.equal(matchId);
@@ -91,7 +91,7 @@ describe("Stake payment", function () {
 
             await game.payStake(matchId, { value: finalStake });
             const tx = await game.connect(challenger).payStake(matchId, { value: finalStake });
-            const eventInterface = new ethers.Interface(["event GameStarted(address id)"]);
+            const eventInterface = new ethers.Interface(["event GameStarted(address indexed id)"]);
             const event = await getEvent(tx, eventInterface, "GameStarted", 1);
 
             expect(event.id).to.be.equal(matchId);
@@ -109,7 +109,7 @@ describe("Stake payment", function () {
 
             await game.payStake(matchId, { value: finalStake });
             const tx = await game.connect(challenger).payStake(matchId, { value: finalStake });
-            const eventInterface = new ethers.Interface(["event RoundStarted(address id, uint round, address codemaker, address codebreaker)"]);
+            const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint round, address codemaker, address codebreaker)"]);
             const event = await getEvent(tx, eventInterface, "RoundStarted", 2);
 
             expect(event.id).to.be.equal(matchId);

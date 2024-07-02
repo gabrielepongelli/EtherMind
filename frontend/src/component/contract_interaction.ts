@@ -31,7 +31,7 @@ const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
 
 //if event happened, display on console
-contract.on('MatchCreated', (address,Mid) => {
+contract.on('MatchCreated', (Mid, address) => {
     console.log(`MatchCreated event: Mid = ${Mid}, by = ${address}`);
 
 });
@@ -46,7 +46,7 @@ contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
 contract.on('StakeProposal', (Mid, proposal) => {
     console.log(`StakeProposal event: Mid = ${Mid}, stake = ${proposal}`);
     //show new proposed stake to the user
-    
+
 });
 
 //if event happened, display on console
@@ -140,13 +140,13 @@ contract.on('RewardDispensed', (Mid, address, currentStake) => {
 });
 
 //if event happened, display on console
-contract.on('Failure', (message) => {
-    console.log(`Failure event: Mid = ${message}`);
+contract.on('Failure', (Mid, message) => {
+    console.log(`Failure event: Mid = ${Mid}, msg = ${message}`);
     //TODO say depending on the returned points who won
 });
 
 
-function check_player_address(otherPlayerAddress: string){
+function check_player_address(otherPlayerAddress: string) {
     // Validate the address
     if (!ethers.isAddress(otherPlayerAddress)) {
         throw new Error('Invalid otherplayer address');
@@ -158,12 +158,12 @@ function check_player_address(otherPlayerAddress: string){
 
 //now the functions
 
-type CreateMatchResult = 
-  | { success: true; tx: ethers.TransactionResponse }
-  | { success: false; error: Error };
+type CreateMatchResult =
+    | { success: true; tx: ethers.TransactionResponse }
+    | { success: false; error: Error };
 
-export async function NewMatch(otherPlayerAddress: string) : Promise<CreateMatchResult> {
-    
+export async function NewMatch(otherPlayerAddress: string): Promise<CreateMatchResult> {
+
     try {
         check_player_address(otherPlayerAddress);
         const tx = await contract.createMatch(otherPlayerAddress);
@@ -174,32 +174,32 @@ export async function NewMatch(otherPlayerAddress: string) : Promise<CreateMatch
 
     } catch (error) {
         console.error('Error:', error);
-        return { success: false, error: error as Error  };   
+        return { success: false, error: error as Error };
     }
 }
 
 
-type JoinMatchResult = 
-  | { success: true; tx: ethers.TransactionResponse }
-  | { success: false; error: Error };
+type JoinMatchResult =
+    | { success: true; tx: ethers.TransactionResponse }
+    | { success: false; error: Error };
 
 export async function joinMatch(Address: string, stake: bigint): Promise<JoinMatchResult> {
     try {
         //as long as it is properly formatted the conversion string->address should be handlesd by itself
-        const tx = await contract.joinMatch(Address,stake);
+        const tx = await contract.joinMatch(Address, stake);
         console.log('Transaction:', tx);
         //return the result and some data
         return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
-        return { success: false, error: error as Error  };    
+        return { success: false, error: error as Error };
     }
 }
 
 
 export async function proposeStake(Address: string, stake: bigint) {
     try {
-        const tx = await contract.stakeProposal(Address,stake);
+        const tx = await contract.stakeProposal(Address, stake);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);

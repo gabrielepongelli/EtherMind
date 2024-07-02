@@ -130,7 +130,7 @@ describe("AFK handling", function () {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
                     const tx = await game.connect(codeBreaker).startAfkCheck(matchId);
-                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address id, address from, uint256 time)"]);
+                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address indexed id, address from, uint256 time)"]);
                     const event = await getEvent(tx, eventInterface, "AfkCheckStarted");
 
                     expect(event.id).to.be.equal(matchId);
@@ -142,7 +142,7 @@ describe("AFK handling", function () {
                     const { game, matchId, codeMaker } = await loadFixture(phaseFn);
 
                     const tx = await game.connect(codeMaker).startAfkCheck(matchId);
-                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address id, address from, uint256 time)"]);
+                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address indexed id, address from, uint256 time)"]);
                     const event = await getEvent(tx, eventInterface, "AfkCheckStarted");
 
                     expect(event.id).to.be.equal(matchId);
@@ -385,7 +385,7 @@ describe("AFK handling", function () {
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
-                    const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                    const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
                     const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                     expect(event.id).to.be.equal(matchId);
@@ -401,7 +401,7 @@ describe("AFK handling", function () {
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
-                    const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                    const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
                     const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                     expect(event.id).to.be.equal(matchId);
@@ -451,7 +451,7 @@ describe("AFK handling", function () {
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
-                    const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+                    const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
                     const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
                     expect(event.id).to.be.equal(matchId);
@@ -469,7 +469,7 @@ describe("AFK handling", function () {
                     await setAutoMine(true);
 
                     const tx = await game.stopMatchForAfk(matchId);
-                    const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+                    const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
                     const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
                     expect(event.id).to.be.equal(matchId);

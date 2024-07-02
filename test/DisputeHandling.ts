@@ -87,7 +87,7 @@ describe("Dispute handling", function () {
             const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundSolution);
 
             const tx = await game.connect(codeMaker).dispute(matchId);
-            const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+            const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
             const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
             expect(event.id).to.be.equal(matchId);
@@ -111,7 +111,7 @@ describe("Dispute handling", function () {
             await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)
 
             const tx = await game.connect(codeBreaker).dispute(matchId);
-            const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+            const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
             const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
             expect(event.id).to.be.equal(matchId);
@@ -124,7 +124,7 @@ describe("Dispute handling", function () {
             // codeMaker is the old codeBreaker
 
             const tx = await game.connect(codeMaker).dispute(matchId);
-            const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+            const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
             const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
             expect(event.id).to.be.equal(matchId);

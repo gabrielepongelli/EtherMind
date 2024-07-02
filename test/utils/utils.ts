@@ -43,7 +43,7 @@ export const getEvent = async (tx: ContractTransactionResponse, eventInterface: 
  * @throws Error if an error occurred.
  */
 export const getMatchFromEvent = async (tx: ContractTransactionResponse): Promise<AddressLike> => {
-    const eventInterface = new ethers.Interface(["event MatchCreated(address creator, address id)"]);
+    const eventInterface = new ethers.Interface(["event MatchCreated(address indexed id, address creator)"]);
     const event = await getEvent(tx, eventInterface, "MatchCreated", 0);
     return assertDefined(event).id;
 }
@@ -59,7 +59,7 @@ export const getMatchFromEvent = async (tx: ContractTransactionResponse): Promis
  * @throws Error if an error occurred.
  */
 export const getRoles = async (tx: ContractTransactionResponse): Promise<any> => {
-    const eventInterface = new ethers.Interface(["event RoundStarted(address id, uint round, address codemaker, address codebreaker)"]);
+    const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint round, address codemaker, address codebreaker)"]);
     const event = assertDefined(await getEvent(tx, eventInterface, "RoundStarted", 2));
 
     const codeBreaker = event.codebreaker;
@@ -78,7 +78,7 @@ export const getRoles = async (tx: ContractTransactionResponse): Promise<any> =>
  * @throws Error if an error occurred.
  */
 export const getScores = async (tx: ContractTransactionResponse): Promise<any> => {
-    const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+    const eventInterface = new ethers.Interface(["event ScoresUpdated(address indexed id, uint creatorScore, uint challengerScore)"]);
     const event = assertDefined(await getEvent(tx, eventInterface, "ScoresUpdated", 1));
 
     const creatorScore = event.creatorScore;

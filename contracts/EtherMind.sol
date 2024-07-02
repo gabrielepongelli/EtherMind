@@ -94,30 +94,38 @@ contract EtherMind {
      * Events
      */
 
-    event MatchCreated(address creator, address id);
-    event MatchStarted(address id, address creator, address challenger);
-    event StakeProposal(address id, uint256 proposal);
-    event StakeFixed(address id, uint256 stake);
-    event StakePayed(address id, address player);
-    event GameStarted(address id);
+    event MatchCreated(address indexed id, address creator);
+    event MatchStarted(address indexed id, address creator, address challenger);
+    event StakeProposal(address indexed id, uint256 proposal);
+    event StakeFixed(address indexed id, uint256 stake);
+    event StakePayed(address indexed id, address player);
+    event GameStarted(address indexed id);
     event RoundStarted(
-        address id,
+        address indexed id,
         uint round,
         address codemaker,
         address codebreaker
     );
-    event SolutionHashSubmitted(address id, address from);
-    event GuessSubmitted(address id, address from, Code guess);
-    event FeedbackSubmitted(address id, address from, Feedback feedback);
-    event RoundEnded(address id, uint round);
-    event SolutionSubmitted(address id, address from, Code solution);
-    event ScoresUpdated(address id, uint creatorScore, uint challengerScore);
-    event PlayerPunished(address id, address player, string reason);
-    event GameEnded(address id);
-    event RewardDispensed(address id, address to, uint reward);
-    event AfkCheckStarted(address id, address from, uint256 time);
-    event MatchEnded(address id);
-    event Failure(string message);
+    event SolutionHashSubmitted(address indexed id, address from);
+    event GuessSubmitted(address indexed id, address from, Code guess);
+    event FeedbackSubmitted(
+        address indexed id,
+        address from,
+        Feedback feedback
+    );
+    event RoundEnded(address indexed id, uint round);
+    event SolutionSubmitted(address indexed id, address from, Code solution);
+    event ScoresUpdated(
+        address indexed id,
+        uint creatorScore,
+        uint challengerScore
+    );
+    event PlayerPunished(address indexed id, address player, string reason);
+    event GameEnded(address indexed id);
+    event RewardDispensed(address indexed id, address to, uint reward);
+    event AfkCheckStarted(address indexed id, address from, uint256 time);
+    event MatchEnded(address indexed id);
+    event Failure(address indexed id, string message);
 
     /**
      * Punish a player of the match specified.
@@ -163,7 +171,7 @@ contract EtherMind {
         bool res = matchReg.addMatch(newId, msg.sender, otherPlayer);
         require(res, "An error occurred while creating the new match");
 
-        emit MatchCreated(msg.sender, newId);
+        emit MatchCreated(newId, msg.sender);
     }
 
     /**
@@ -495,7 +503,7 @@ contract EtherMind {
             matchReg.deleteMatch(id);
             creator.transfer(refundAmount);
             challenger.transfer(refundAmount);
-            emit Failure("Internal error");
+            emit Failure(id, "Internal error");
             emit MatchEnded(id);
         }
     }

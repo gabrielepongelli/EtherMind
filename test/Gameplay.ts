@@ -106,7 +106,7 @@ describe("Gameplay", function () {
                 const hashedSolution = hashCode(solution, nonce);
 
                 const tx = await game.connect(codeMaker).newSolutionHash(matchId, hashedSolution);
-                const eventInterface = new ethers.Interface(["event SolutionHashSubmitted(address id, address from)"]);
+                const eventInterface = new ethers.Interface(["event SolutionHashSubmitted(address indexed id, address from)"]);
                 const event = await getEvent(tx, eventInterface, "SolutionHashSubmitted");
 
                 expect(event.id).to.be.equal(matchId);
@@ -216,7 +216,7 @@ describe("Gameplay", function () {
                 const guess = newCode(1, 2, 3, 4);
 
                 const tx = await game.connect(codeBreaker).newGuess(matchId, guess);
-                const eventInterface = new ethers.Interface(["event GuessSubmitted(address id, address from, uint16 guess)"]);
+                const eventInterface = new ethers.Interface(["event GuessSubmitted(address indexed id, address from, uint16 guess)"]);
                 const event = await getEvent(tx, eventInterface, "GuessSubmitted");
 
                 expect(event.id).to.be.equal(matchId);
@@ -305,7 +305,7 @@ describe("Gameplay", function () {
                 const feedback = newFeedback(0, 3);
 
                 const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
-                const eventInterface = new ethers.Interface(["event FeedbackSubmitted(address id, address from, uint8 feedback)"]);
+                const eventInterface = new ethers.Interface(["event FeedbackSubmitted(address indexed id, address from, uint8 feedback)"]);
                 const event = await getEvent(tx, eventInterface, "FeedbackSubmitted");
 
                 expect(event.id).to.be.equal(matchId);
@@ -325,7 +325,7 @@ describe("Gameplay", function () {
                 const feedback = newFeedback(0, 3);
 
                 const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
-                const eventInterface = new ethers.Interface(["event RoundEnded(address id, uint round)"]);
+                const eventInterface = new ethers.Interface(["event RoundEnded(address indexed id, uint round)"]);
                 const event = await getEvent(tx, eventInterface, "RoundEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -344,7 +344,7 @@ describe("Gameplay", function () {
                 const feedback = newFeedback(4, 0);
 
                 const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
-                const eventInterface = new ethers.Interface(["event RoundEnded(address id, uint round)"]);
+                const eventInterface = new ethers.Interface(["event RoundEnded(address indexed id, uint round)"]);
                 const event = await getEvent(tx, eventInterface, "RoundEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -459,7 +459,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event SolutionSubmitted(address id, address from, uint16 solution)"]);
+                const eventInterface = new ethers.Interface(["event SolutionSubmitted(address indexed id, address from, uint16 solution)"]);
                 const event = await getEvent(tx, eventInterface, "SolutionSubmitted");
 
                 expect(event.id).to.be.equal(matchId);
@@ -480,7 +480,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeMaker, challenger, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+                const eventInterface = new ethers.Interface(["event ScoresUpdated(address indexed id, uint creatorScore, uint challengerScore)"]);
                 const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
 
                 const challengerWonFullPoints = event.challengerScore == N_ROUNDS + EXTRA_POINTS;
@@ -510,7 +510,7 @@ describe("Gameplay", function () {
                 await game.connect(codeMaker).newFeedback(matchId, newFeedback(4, 0));
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+                const eventInterface = new ethers.Interface(["event ScoresUpdated(address indexed id, uint creatorScore, uint challengerScore)"]);
                 const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
 
                 const challengerWonFullPoints = event.challengerScore == N_ROUNDS;
@@ -538,7 +538,7 @@ describe("Gameplay", function () {
                 await game.connect(codeMaker).newFeedback(matchId, newFeedback(4, 0));
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event ScoresUpdated(address id, uint creatorScore, uint challengerScore)"]);
+                const eventInterface = new ethers.Interface(["event ScoresUpdated(address indexed id, uint creatorScore, uint challengerScore)"]);
                 const event = await getEvent(tx, eventInterface, "ScoresUpdated", 1);
 
                 const challengerWonFullPoints = event.challengerScore == 2;
@@ -569,7 +569,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilLastRoundLastFeedback);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event GameEnded(address id)"]);
+                const eventInterface = new ethers.Interface(["event GameEnded(address indexed id)"]);
                 const event = await getEvent(tx, eventInterface, "GameEnded", 2);
 
                 expect(event.id).to.be.equal(matchId);
@@ -585,7 +585,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event RoundStarted(address id, uint round, address codemaker, address codebreaker)"]);
+                const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint round, address codemaker, address codebreaker)"]);
                 const event = await getEvent(tx, eventInterface, "RoundStarted", 2);
 
                 expect(event.id).to.be.equal(matchId);
@@ -606,7 +606,7 @@ describe("Gameplay", function () {
                 const code = newCode(0, 0, 0, 0);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+                const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
                 const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
                 expect(event.id).to.be.equal(matchId);
@@ -626,7 +626,7 @@ describe("Gameplay", function () {
                 const code = newCode(0, 0, 0, 0);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
                 const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -644,7 +644,7 @@ describe("Gameplay", function () {
                 const salt = prepareSalt(9999999);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
-                const eventInterface = new ethers.Interface(["event PlayerPunished(address id, address player, string reason)"]);
+                const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
                 const event = await getEvent(tx, eventInterface, "PlayerPunished");
 
                 expect(event.id).to.be.equal(matchId);
@@ -664,7 +664,7 @@ describe("Gameplay", function () {
                 const salt = prepareSalt(9999999);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, salt);
-                const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
                 const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -771,7 +771,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeBreaker } = await loadFixture(phases.untilLastRoundSolution);
 
                 const tx = await game.connect(codeBreaker).checkWinner(matchId);
-                const eventInterface = new ethers.Interface(["event MatchEnded(address id)"]);
+                const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
                 const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -787,7 +787,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeBreaker, finalStake } = await loadFixture(phases.untilLastRoundSolution);
 
                 const tx = await game.connect(codeBreaker).checkWinner(matchId);
-                const eventInterface = new ethers.Interface(["event RewardDispensed(address id, address to, uint reward)"]);
+                const eventInterface = new ethers.Interface(["event RewardDispensed(address indexed id, address to, uint reward)"]);
                 const event = await getEvent(tx, eventInterface, "RewardDispensed");
 
                 expect(event.id).to.be.equal(matchId);
@@ -812,7 +812,7 @@ describe("Gameplay", function () {
                 await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)
 
                 const tx = await game.connect(codeBreaker).checkWinner(matchId);
-                const eventInterface = new ethers.Interface(["event RewardDispensed(address id, address to, uint reward)"]);
+                const eventInterface = new ethers.Interface(["event RewardDispensed(address indexed id, address to, uint reward)"]);
                 const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
 
                 expect(eventInterface.decodeEventLog("RewardDispensed", assertDefined(receipt?.logs[0].data), receipt?.logs[0].topics)).not.to.throw;
@@ -837,7 +837,7 @@ describe("Gameplay", function () {
                 await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)
 
                 const tx = await game.connect(codeBreaker).checkWinner(matchId);
-                const eventInterface = new ethers.Interface(["event RewardDispensed(address id, address to, uint reward)"]);
+                const eventInterface = new ethers.Interface(["event RewardDispensed(address indexed id, address to, uint reward)"]);
                 const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
 
                 const firstEvent = eventInterface.decodeEventLog("RewardDispensed", assertDefined(receipt?.logs[0].data), receipt?.logs[0].topics);

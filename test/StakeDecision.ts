@@ -18,7 +18,7 @@ describe("Stake decision", function () {
 
                 const proposal = 10;
                 const tx2 = await game.connect(challenger).joinMatch(matchId, proposal);
-                const eventInterface = new ethers.Interface(["event StakeProposal(address id, uint256 proposal)"]);
+                const eventInterface = new ethers.Interface(["event StakeProposal(address indexed id, uint256 proposal)"]);
                 const event = await getEvent(tx2, eventInterface, "StakeProposal", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -109,7 +109,7 @@ describe("Stake decision", function () {
 
                 const newStakeProposal = stakeProposal + 10;
                 const tx = await game.stakeProposal(matchId, newStakeProposal);
-                const eventInterface = new ethers.Interface(["event StakeProposal(address id, uint256 proposal)"]);
+                const eventInterface = new ethers.Interface(["event StakeProposal(address indexed id, uint256 proposal)"]);
                 const event = await getEvent(tx, eventInterface, "StakeProposal");
 
                 expect(event.id).to.be.equal(matchId);
@@ -126,7 +126,7 @@ describe("Stake decision", function () {
                 const { game, matchId, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 const tx = await game.stakeProposal(matchId, stakeProposal);
-                const eventInterface = new ethers.Interface(["event StakeFixed(address id, uint256 stake)"]);
+                const eventInterface = new ethers.Interface(["event StakeFixed(address indexed id, uint256 stake)"]);
                 const event = await getEvent(tx, eventInterface, "StakeFixed");
 
                 expect(event.id).to.be.equal(matchId);
