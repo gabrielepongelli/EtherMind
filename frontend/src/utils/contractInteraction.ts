@@ -1,20 +1,35 @@
+
 import { ethers } from 'ethers';
 import { abi as contractAbi } from '../../../artifacts/contracts/EtherMind.sol/EtherMind.json';
 import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
+import dotenv from 'dotenv'; 
+dotenv.config({ path: __dirname+'/.env' });
 
-
-
-// Connect to Ethereum using Infura
-const infuraProjectId = 'a270745867ac48f29fb7d90e316e1402';
-const provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/${infuraProjectId}`);
 // Contract details
-const contractAddress = '0x18E1039F024b73aB3B45377A127662104D67Cb96';
+const contractAddress = process.env.CONTRACT_ADDRESS;
 
 //this is if you need to get payed
-const privateKey = '7f0a2326943793a9f62333715e771ee1b42a643289299f8e927bd15fd98fb02b';
-const wallet = new ethers.Wallet(privateKey, provider);
+const privateKey = process.env.PRIVATE_KEY;
 
-const contract = new ethers.Contract(contractAddress, contractAbi, wallet);
+
+let provider : ethers.JsonRpcProvider;
+
+if (!process.env.LOCAL_NODE){
+    // Connect to Ethereum using Infura
+    const infuraProjectId = process.env.API_KEY;
+    provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/${infuraProjectId}`);
+}else{
+    // Connect to the Hardhat local network
+    provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+}
+
+// use a specific private key
+const wallet = new ethers.Wallet(privateKey as string, provider);
+// Connect to the deployed contract
+const contract = new ethers.Contract(contractAddress as string, contractAbi, wallet);
+
+
+
 
 
 //if event happened, display on console
