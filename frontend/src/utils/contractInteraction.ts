@@ -2,21 +2,20 @@
 import { ethers } from 'ethers';
 import { abi as contractAbi } from '../../../artifacts/contracts/EtherMind.sol/EtherMind.json';
 import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
-import dotenv from 'dotenv'; 
-dotenv.config({ path: __dirname+'/.env' });
+
+//import.meta.env is the equivalent of dotenv for broswers
 
 // Contract details
-const contractAddress = process.env.CONTRACT_ADDRESS;
+const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 
-//this is if you need to get payed
-const privateKey = process.env.PRIVATE_KEY;
-
+//this is if you need to pay
+const privateKey :string = import.meta.env.VITE_PRIVATE_KEY;
 
 let provider : ethers.JsonRpcProvider;
 
-if (!process.env.LOCAL_NODE){
+if (!import.meta.env.VITE_LOCAL_NODE){
     // Connect to Ethereum using Infura
-    const infuraProjectId = process.env.API_KEY;
+    const infuraProjectId = import.meta.env.VITE_API_KEY;
     provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/${infuraProjectId}`);
 }else{
     // Connect to the Hardhat local network
@@ -24,7 +23,7 @@ if (!process.env.LOCAL_NODE){
 }
 
 // use a specific private key
-const wallet = new ethers.Wallet(privateKey as string, provider);
+const wallet = new ethers.Wallet(privateKey, provider);
 // Connect to the deployed contract
 const contract = new ethers.Contract(contractAddress as string, contractAbi, wallet);
 
