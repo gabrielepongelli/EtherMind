@@ -94,7 +94,7 @@ contract EtherMind {
      * Events
      */
 
-    event MatchCreated(address indexed id, address creator);
+    event MatchCreated(address indexed id, address indexed creator);
     event MatchStarted(address indexed id, address creator, address challenger);
     event StakeProposal(address indexed id, uint256 proposal);
     event StakeFixed(address indexed id, uint256 stake);

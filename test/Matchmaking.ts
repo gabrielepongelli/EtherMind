@@ -38,7 +38,7 @@ describe("Matchmaking", function () {
             it("Should emit an event with valid arguments when a new match is created", async function () {
                 const { game, creator } = await loadFixture(untilDeploy);
                 const tx = await game.createMatch(ethers.ZeroAddress);
-                const eventInterface = new ethers.Interface(["event MatchCreated(address indexed id, address creator)"]);
+                const eventInterface = new ethers.Interface(["event MatchCreated(address indexed id, address indexed creator)"]);
                 const event = await getEvent(tx, eventInterface, "MatchCreated");
 
                 expect(event.creator).to.be.equal(creator.address);

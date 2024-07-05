@@ -43,7 +43,7 @@ export const getEvent = async (tx: ContractTransactionResponse, eventInterface: 
  * @throws Error if an error occurred.
  */
 export const getMatchFromEvent = async (tx: ContractTransactionResponse): Promise<AddressLike> => {
-    const eventInterface = new ethers.Interface(["event MatchCreated(address indexed id, address creator)"]);
+    const eventInterface = new ethers.Interface(["event MatchCreated(address indexed id, address indexed creator)"]);
     const event = await getEvent(tx, eventInterface, "MatchCreated", 0);
     return assertDefined(event).id;
 }
