@@ -19,13 +19,16 @@ const config: HardhatUserConfig = {
         coinmarketcap: process.env.COINMARKETCAP_API_KEY
     },
     networks: {
-        hardhat: {
-            // dosen't mine automatically but once every 11-13s
-            mining: {
-                auto: false,
-                interval: [11000, 13000]
+        hardhat: process.env.EXTERNAL_NODE === 'true' ?
+            // only apply this if used with an external node
+            {
+                // dosen't mine automatically but once every 11-13s
+                mining: {
+                    auto: false,
+                    interval: [11000, 13000]
+                }
             }
-        }
+            : {}
     },
 };
 
