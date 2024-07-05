@@ -41,9 +41,28 @@ export const StakePaymentView: React.FC = () => {
     }, [matchState]);
 
     const payBtnClick = () => {
-        payStake(matchState.matchID || "", matchState.stakeProposed || BigInt(0));
+        payStake(matchState.matchID as string, matchState.stakeProposed as bigint).then((result) => {
+            if (!result.success) {
+                dispatchMatchState({ type: 'error', msg: result.error });
+            }
+        });
         dispatchMatchState({ type: 'stake payed', waiting: true });
     }
+
+    const err = matchState.error !== undefined;
+    const errorMsg = err ? (
+        <div className="row">
+            <div className="col-1"></div>
+            <div className="col">
+                <Notice
+                    text={matchState.error as string}
+                    type="failure"
+                    children={undefined}
+                />
+            </div>
+            <div className="col-1"></div>
+        </div>
+    ) : <></>;
 
     const infoBar = (
         <div className="row">
@@ -79,7 +98,8 @@ export const StakePaymentView: React.FC = () => {
             <TitleBox>
                 <div>
                     {infoBar}
-                    <div className="row mt-5">
+                    {errorMsg}
+                    <div className={err ? "row" : "row mt-5"}>
                         <div className="col-1"></div>
                         <div className="col">
                             <Notice
@@ -104,7 +124,8 @@ export const StakePaymentView: React.FC = () => {
             <TitleBox>
                 <div>
                     {infoBar}
-                    <div className="row">
+                    {errorMsg}
+                    <div className={err ? "row" : "row mt-5"}>
                         <div className="col-1"></div>
                         <div className="col-3 container d-flex mt-5">
                             <Button

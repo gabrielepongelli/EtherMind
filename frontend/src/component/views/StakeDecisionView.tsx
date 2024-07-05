@@ -16,7 +16,7 @@ import { proposeStake } from "../../utils/contractInteraction";
 export const StakeDecisionView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
     const dispatchMatchState = useContext(MatchStateSetContext);
-    const [stake, setStake] = useState<bigint>(BigInt(0));
+    const [stake, setStake] = useState("");
 
     useEffect(() => {
         const filterApproved = contract.filters.StakeFixed(matchState.matchID, null);
@@ -46,18 +46,42 @@ export const StakeDecisionView: React.FC = () => {
     }, [matchState]);
 
     const stakeHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setStake(BigInt(event.target.value));
+        setStake(event.target.value);
     };
 
     const proposeBtnClick = () => {
-        proposeStake(matchState.matchID || "", stake);
+        proposeStake(matchState.matchID as string, stake)
+            .then((result) => {
+                if (!result.success) {
+                    dispatchMatchState({ type: 'error', msg: result.error });
+                }
+            });
         dispatchMatchState({ type: 'stake proposal', waiting: true });
     }
 
     const confirmBtnClick = () => {
-        proposeStake(matchState.matchID || "", matchState.stakeProposed || BigInt(0));
+        proposeStake(matchState.matchID as string, matchState.stakeProposed as string).then((result) => {
+            if (!result.success) {
+                dispatchMatchState({ type: 'error', msg: result.error });
+            }
+        });
         dispatchMatchState({ type: 'stake proposal', waiting: true });
     }
+
+    const err = matchState.error !== undefined;
+    const errorMsg = err ? (
+        <div className="row mt-5">
+            <div className="col-1"></div>
+            <div className="col">
+                <Notice
+                    text={matchState.error as string}
+                    type="failure"
+                    children={undefined}
+                />
+            </div>
+            <div className="col-1"></div>
+        </div>
+    ) : <></>;
 
     const infoBar = (
         <div className="row">
@@ -92,7 +116,8 @@ export const StakeDecisionView: React.FC = () => {
             <TitleBox>
                 <div>
                     {infoBar}
-                    <div className="row mt-5">
+                    {errorMsg}
+                    <div className={err ? "row" : "row mt-5"}>
                         <div className="col-1"></div>
                         <div className="col">
                             <Notice
@@ -117,7 +142,8 @@ export const StakeDecisionView: React.FC = () => {
             <TitleBox>
                 <div>
                     {infoBar}
-                    <div className="row mt-5">
+                    {errorMsg}
+                    <div className={err ? "row" : "row mt-5"}>
                         <div className="col-1"></div>
                         <div className="col">
                             <Notice

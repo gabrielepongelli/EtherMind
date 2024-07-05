@@ -4,6 +4,7 @@ import { Button } from '../Button';
 import { TextInputBar } from '../TextInputBar';
 import { TitleBox } from "../TitleBox";
 import { Spinner } from '../Spinner';
+import { Notice } from '../Notice';
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
 
@@ -15,18 +16,23 @@ export const JoinMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
     const dispatchMatchState = useContext(MatchStateSetContext);
     const [matchID, setMatchID] = useState("");
-    const [stake, setStake] = useState<bigint>(BigInt(0));
+    const [stake, setStake] = useState("");
 
     const matchIDHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
         setMatchID(event.target.value);
     };
 
     const stakeHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setStake(BigInt(event.target.value));
+        setStake(event.target.value);
     };
 
     const onJoinBtnClick = () => {
-        joinMatch(matchID, stake);
+        joinMatch(matchID, stake)
+            .then((result) => {
+                if (!result.success) {
+                    dispatchMatchState({ type: 'error', msg: result.error });
+                }
+            });
         dispatchMatchState({ type: 'joining', waiting: true });
     }
 
@@ -45,6 +51,20 @@ export const JoinMatchView: React.FC = () => {
         const filter = contract.filters.MatchStarted(null, null, wallet.address);
         contract.on(filter, eventHandler);
     }, [matchState.waiting]);
+
+    const errorMsg = matchState.error === undefined ? <></> : (
+        <div className="row">
+            <div className="col"></div>
+            <div className="col-6">
+                <Notice
+                    text={matchState.error}
+                    type="failure"
+                    children={undefined}
+                />
+            </div>
+            <div className="col"></div>
+        </div>
+    );
 
     let matchIdInput = (<></>);
     if (!matchState.randomJoin) {
@@ -72,6 +92,7 @@ export const JoinMatchView: React.FC = () => {
         return (
             <TitleBox>
                 <div>
+                    {errorMsg}
                     {matchIdInput}
                     <div className="row">
                         <div className="col"></div>

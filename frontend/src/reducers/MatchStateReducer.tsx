@@ -7,8 +7,9 @@ export const initialMatchState: MatchState = {
     matchID: undefined,
     stakeProposed: undefined,
     opponent: undefined,
-    proposed: undefined,
-    payed: undefined
+    proposed: false,
+    payed: false,
+    error: undefined
 };
 
 export type MatchStateAction =
@@ -19,34 +20,42 @@ export type MatchStateAction =
     | { type: "joining", waiting: true }
     | { type: "started", matchId: string, opponent: string }
     | { type: "stake proposal", waiting: true }
-    | { type: "stake proposal", waiting: false, proposed: boolean, amount: bigint }
-    | { type: "stake approved", amount: bigint }
+    | { type: "stake proposal", waiting: false, proposed: boolean, amount: string }
+    | { type: "stake approved", amount: string }
     | { type: "stake payed", waiting: true }
     | { type: "stake payed", waiting: false }
     | { type: "game started" }
+    | { type: "error", msg: string }
 
 export const matchStateReducer = (state: MatchState, action: MatchStateAction): MatchState => {
     switch (action.type) {
         case "creating":
             return {
                 ...state,
-                phase: Phase.CREATING_MATCH
+                phase: Phase.CREATING_MATCH,
+                error: undefined
             };
         case "created":
             if (action.waiting) {
-                return { ...state, waiting: true };
+                return { ...state, waiting: true, error: undefined };
             } else {
-                return { ...state, waiting: false, matchID: action.matchId };
+                return {
+                    ...state,
+                    waiting: false,
+                    matchID: action.matchId,
+                    error: undefined
+                };
             }
         case "joining":
             if (action.waiting) {
-                return { ...state, waiting: true };
+                return { ...state, waiting: true, error: undefined };
             } else {
                 return {
                     ...state,
                     phase: Phase.JOINING_MATCH,
                     randomJoin: action.random,
-                    waiting: false
+                    waiting: false,
+                    error: undefined
                 };
             }
         case "started":
@@ -56,17 +65,19 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
                 matchID: action.matchId,
                 waiting: true,
                 opponent: action.opponent,
-                proposed: false
+                proposed: false,
+                error: undefined
             };
         case "stake proposal":
             if (action.waiting) {
-                return { ...state, waiting: true };
+                return { ...state, waiting: true, error: undefined };
             } else {
                 return {
                     ...state,
                     waiting: false,
                     proposed: action.proposed,
-                    stakeProposed: action.amount
+                    stakeProposed: action.amount,
+                    error: undefined
                 };
             }
         case "stake approved":
@@ -74,16 +85,20 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
                 ...state,
                 waiting: false,
                 phase: Phase.STAKE_PAYMENT,
-                stakeProposed: action.amount,
-                payed: false
+                stakeProposed: BigInt(action.amount),
+                payed: false,
+                error: undefined
             };
         case 'stake payed':
             return {
                 ...state,
                 waiting: action.waiting,
-                payed: !action.waiting
+                payed: !action.waiting,
+                error: undefined
             };
         case "game started":
-            return { ...state, phase: Phase.GAME_STARTED };
+            return { ...state, phase: Phase.GAME_STARTED, error: undefined };
+        case "error":
+            return { ...state, waiting: false, error: action.msg }
     }
 }

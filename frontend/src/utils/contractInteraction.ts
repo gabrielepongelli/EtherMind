@@ -1,114 +1,100 @@
 
 import { ethers } from 'ethers';
 import { contract } from '../configs/contract';
-import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
 
-// if event happened, display on console
-contract.on('GameStarted', (Mid) => {
-    console.log(`GameStarted event: Mid = ${Mid}`);
+type Code = number;
+type Feedback = number;
 
-});
+/**
+ * Create a new code given the specified colors.
+ * @param c0 The first color.
+ * @param c1 The second color.
+ * @param c2 The third color.
+ * @param c3 The fourth color.
+ * @returns The resulting code.
+ */
+const newCode = (c0: number, c1: number, c2: number, c3: number): Code => {
+    return c0 | (c1 << 3) | (c2 << 6) | (c3 << 9);
+}
 
-// if event happened, display on console
-contract.on('RoundStarted', (Mid, round, codeMaddress, codeBaddress) => {
-    console.log(`RoundStarted event: Mid = ${Mid}, n rounds = ${round}, codemaster = ${codeMaddress}, codebreaker = ${codeBaddress}`);
+/**
+ * Encode the salt so that it is in the correct format expected by the contract.
+ * @param salt The salt to encode.
+ * @returns The encoded salt.
+ */
+const prepareSalt = (salt: number): string => {
+    return "0x" + salt.toString(16).padStart(8, "0");
+}
 
-});
+/**
+ * Hash the code provided.
+ * @param code Code to be hashed.
+ * @returns The hash of the code provided.
+ */
+const hashCode = (code: Code, salt: number): string => {
+    return ethers.solidityPackedKeccak256(['uint16', 'bytes4'], [code, prepareSalt(salt)])
+}
 
-// if event happened, display on console
-contract.on('GuessSubmitted', (Mid, address, guess) => {
-    console.log(`GuessSubmitted event: Mid = ${Mid}, by = ${address}, guess = ${guess}`);
+/**
+ * Create a new feedback.
+ * @param cp The number of correct colors in the correct position.
+ * @param np The number of correct colors in the wrong position.
+ * @returns The resulting feedback.
+ */
+const newFeedback = (cp: number, np: number): Feedback => {
+    return cp | (np << 4);
+}
 
-});
+interface EthersError extends Error {
+    code: string;
+    reason?: string;
+    message: string;
+}
 
-// if event happened, display on console
-contract.on('FeedbackSubmitted', (Mid, address, feedback) => {
-    console.log(`FeedbackSubmitted event: Mid = ${Mid}, by = ${address}, clue = ${feedback}`);
+function handleEthersError(error: EthersError): string {
+    if (error.reason) {
+        return error.reason;
+    }
 
-});
+    if (error.message.includes('insufficient funds')) {
+        return 'Your account does not have enough funds to complete this transaction.';
+    }
 
-// if event happened, display on console
-contract.on('SolutionHashSubmitted', (Mid, address) => {
-    console.log(`SolutionHashSubmitted event: Mid = ${Mid}, by = ${address}`);
+    if (error.message.includes('NetworkError')) {
+        return 'A network error occurred. Please check your internet connection.';
+    }
 
-});
+    if (error.message.includes('invalid JSON-RPC response')) {
+        return 'The server encountered an error. Please try again later.';
+    }
 
-// if event happened, display on console
-contract.on('SolutionSubmitted', (Mid, address, solution) => {
-    console.log(`SolutionSubmitted event: Mid = ${Mid}, by = ${address}, solution = ${solution}`);
+    if (error.message.includes('timeout')) {
+        return 'The request timed out. Please try again.';
+    }
 
-});
+    if (error.message.includes('invalid address')) {
+        return 'Invalid address format. Please check the address and try again.';
+    }
 
-// if event happened, display on console
-contract.on('ScoresUpdated', (Mid, crsore, chscore) => {
-    console.log(`ScoresUpdated event: Mid = ${Mid}, creator score = ${crsore}, challenger score = ${chscore}`);
+    // default error message
+    return 'An unknown error occurred. Please try again later.';
+}
 
-});
-
-// if event happened, display on console
-contract.on('AfkCheckStarted', (Mid, address, timestamp) => {
-    console.log(`AfkCheckStarted event:  Mid = ${Mid}, by = ${address}, timestamp = ${timestamp}`);
-
-});
-
-// if event happened, display on console
-contract.on('GameEnded', (Mid) => {
-    console.log(`GameEnded event: Mid = ${Mid}`);
-    // TODO say depending on the returned points who won
-});
-
-// if event happened, display on console
-contract.on('MatchEnded', (Mid) => {
-    console.log(`MatchEnded event: Mid = ${Mid}`);
-    // TODO say depending on the returned points who won
-});
-
-// if event happened, display on console
-contract.on('RoundEnded', (Mid, nOfRounds) => {
-    console.log(`RoundEnded event: Mid = ${Mid}, rounds = ${nOfRounds}`);
-
-});
-
-// if event happened, display on console
-contract.on('PlayerPunished', (Mid, address, punishment) => {
-    console.log(`PlayerPunished event:  Mid = ${Mid}, by = ${address}, reason for punishment = ${punishment}`);
-
-});
-
-// if event happened, display on console
-contract.on('RewardDispensed', (Mid, address, currentStake) => {
-    console.log(`RewardDispensed event: Mid = ${Mid}, by = ${address}, stake = ${currentStake}`);
-    // TODO say depending on the returned points who won
-});
-
-// if event happened, display on console
-contract.on('Failure', (Mid, message) => {
-    console.log(`Failure event: Mid = ${Mid}, msg = ${message}`);
-    // TODO say depending on the returned points who won
-});
-
-
-function checkPlayerAddress(otherPlayerAddress: string) {
-    // Validate the address
-    if (!ethers.isAddress(otherPlayerAddress)) {
-        throw new Error('Invalid otherplayer address');
+const checkAddress = (addr: string) => {
+    if (!ethers.isAddress(addr)) {
+        throw Error('invalid address');
     }
 }
 
-
-
-
-//now the functions
-
-type CreateMatchResult =
+type ContractCallResult =
     | { success: true; tx: ethers.TransactionResponse }
-    | { success: false; error: Error };
+    | { success: false; error: string };
 
-export const createMatch = async (otherPlayerAddress: string): Promise<CreateMatchResult> => {
+export const createMatch = async (otherPlayerAddress: string): Promise<ContractCallResult> => {
     try {
 
         if (otherPlayerAddress) {
-            checkPlayerAddress(otherPlayerAddress);
+            checkAddress(otherPlayerAddress);
             otherPlayerAddress = otherPlayerAddress.startsWith('0x') ? otherPlayerAddress : '0x' + otherPlayerAddress;
         } else {
             otherPlayerAddress = ethers.ZeroAddress;
@@ -116,166 +102,163 @@ export const createMatch = async (otherPlayerAddress: string): Promise<CreateMat
 
         const tx = await contract.createMatch(otherPlayerAddress);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-        return { success: true, tx };
 
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
-        return { success: false, error: error as Error };
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-
-type JoinMatchResult =
-    | { success: true; tx: ethers.TransactionResponse }
-    | { success: false; error: Error };
-
-export const joinMatch = async (matchId: string, stake: bigint): Promise<JoinMatchResult> => {
+export const joinMatch = async (matchId: string, stake: string): Promise<ContractCallResult> => {
     try {
 
         if (matchId) {
-            checkPlayerAddress(matchId);
+            checkAddress(matchId);
             matchId = matchId.startsWith('0x') ? matchId : '0x' + matchId;
         } else {
             matchId = ethers.ZeroAddress;
         }
 
-        const tx = await contract.joinMatch(matchId, stake);
+        const tx = await contract.joinMatch(matchId, BigInt(stake));
         console.log('Transaction:', tx);
-        //return the result and some data
+
         return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
-        return { success: false, error: error as Error };
+
+        if (error instanceof SyntaxError || error instanceof TypeError) {
+            return { success: false, error: 'Invalid stake format. Please enter a valid number.' };
+        }
+
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export const proposeStake = async (matchId: string, stake: bigint) => {
+export const proposeStake = async (matchId: string, stake: string): Promise<ContractCallResult> => {
     try {
-        const tx = await contract.stakeProposal(matchId, stake);
+        const tx = await contract.stakeProposal(matchId, BigInt(stake));
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+
+        if (error instanceof SyntaxError || error instanceof TypeError) {
+            return { success: false, error: 'Invalid stake format. Please enter a valid number.' };
+        }
+
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export const payStake = async (matchId: string, stake: bigint) => {
+export const payStake = async (matchId: string, stake: bigint): Promise<ContractCallResult> => {
     try {
         const tx = await contract.payStake(matchId, { value: stake });
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function uploadHash(matchID: string, solution: Code, salt: number) {
+export const uploadHash = async (matchID: string, solution: Code, salt: number) => {
     let hashedSolution = hashCode(solution, salt);
     try {
         const tx = await contract.newSolutionHash(matchID, hashedSolution);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function uploadGuess(matchID: number, guess: Code) {
+export const uploadGuess = async (matchID: number, guess: Code) => {
     try {
         const tx = await contract.newGuess(matchID, guess);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function uploadFeedback(matchID: number, feedback: Feedback) {
+export const uploadFeedback = async (matchID: number, feedback: Feedback) => {
     try {
         const tx = await contract.newFeedback(matchID, feedback);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function sendSolution(matchID: number, solution: Code, salt: number) {
+export const sendSolution = async (matchID: number, solution: Code, salt: number) => {
     try {
         const tx = await contract.uploadSolution(matchID, solution, prepareSalt(salt));
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function sendDispute(matchID: number) {
+export const sendDispute = async (matchID: number) => {
     try {
         const tx = await contract.dispute(matchID);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function AFKcheck(matchID: number) {
+export const AFKcheck = async (matchID: number) => {
     try {
         const tx = await contract.startAfkCheck(matchID);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function HaltGame(matchID: number) {
+export const HaltGame = async (matchID: number) => {
     try {
         const tx = await contract.stopMatchForAfk(matchID);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
 
-export async function checkWhoWinner(matchID: number) {//THIS *MAY* CAUSE PROBLEMS IN THE FUTURE, CONSIDER SWITCH TO JUST NUMBERS
+export const checkWhoWinner = async (matchID: number) => {
     try {
         const tx = await contract.checkWinner(matchID);
         console.log('Transaction:', tx);
-        //const receipt = await tx.wait();
-        //console.log('Transaction receipt:', receipt);
-
+        return { success: true, tx };
     } catch (error) {
         console.error('Error:', error);
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
     }
 }
-
-//in theory we don't need to perform any extra check: if say uploadhash was successful then we can go on and do the feedback, otherwise it automatically kick us out saying were not there wyt...
-
-
-
-
-
-

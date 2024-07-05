@@ -12,11 +12,11 @@ export const HomeView: React.FC = () => {
     }
 
     const onRandomJoinBtnClick = () => {
-        return dispatchMatchState({ type: "joining", random: true });
+        return dispatchMatchState({ type: "joining", waiting: false, random: true });
     }
 
     const onIDJoinBtnClick = () => {
-        return dispatchMatchState({ type: "joining", random: false });
+        return dispatchMatchState({ type: "joining", waiting: false, random: false });
     }
 
     return (

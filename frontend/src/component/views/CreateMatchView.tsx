@@ -51,9 +51,27 @@ export const CreateMatchView: React.FC = () => {
     };
 
     const onCreateBtnClick = () => {
-        createMatch(playerAddress);
+        createMatch(playerAddress).then((result) => {
+            if (!result.success) {
+                dispatchMatchState({ type: 'error', msg: result.error });
+            }
+        });
         dispatchMatchState({ type: 'created', waiting: true });
     }
+
+    const errorMsg = matchState.error === undefined ? <></> : (
+        <div className="row">
+            <div className="col"></div>
+            <div className="col-6">
+                <Notice
+                    text={matchState.error}
+                    type="failure"
+                    children={undefined}
+                />
+            </div>
+            <div className="col"></div>
+        </div>
+    );
 
     if (matchState.waiting) {
         return (
@@ -63,6 +81,7 @@ export const CreateMatchView: React.FC = () => {
         return (
             <TitleBox>
                 <div>
+                    {errorMsg}
                     <div className="row">
                         <div className="col"></div>
                         <div className="col-6">
@@ -89,6 +108,7 @@ export const CreateMatchView: React.FC = () => {
         return (
             <TitleBox>
                 <div>
+                    {errorMsg}
                     <div className="row">
                         <div className="col"></div>
                         <div className="col-6 mb-3">
