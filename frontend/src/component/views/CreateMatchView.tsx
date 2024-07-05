@@ -9,9 +9,9 @@ import { CopyIcon } from '../CopyIcon';
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
 
+import ethers from 'ethers';
 import { createMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
-import ethers from 'ethers';
 
 export const CreateMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -34,6 +34,18 @@ export const CreateMatchView: React.FC = () => {
         contract.on(filter, eventHandler);
     }, []);
 
+    useEffect(() => {
+        const eventHandler = (event: ethers.ContractEventPayload) => {
+            console.log(`MatchStarted event: matchID = ${event.args[0]}, creator = ${event.args[1]}, challenger = ${event.args[2]}`);
+
+            dispatchMatchState({ type: 'started', matchId: event.args[0], opponent: event.args[2] });
+            contract.off(filter);
+        };
+
+        const filter = contract.filters.MatchStarted(matchState.matchID);
+        contract.on(filter, eventHandler);
+    }, []);
+
     const handlePlayerAddressInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setplayerAddress(event.target.value);
     };
@@ -43,39 +55,36 @@ export const CreateMatchView: React.FC = () => {
         dispatchMatchState({ type: 'created', waiting: true });
     }
 
-    if (matchState.waitingForJoin) {
-        if (matchState.matchID === undefined) {
-            return (
-                <TitleBox><Spinner /></TitleBox>
-            );
-        } else {
-
-            return (
-                <TitleBox>
-                    <div>
-                        <div className="row">
-                            <div className="col"></div>
-                            <div className="col-6">
-                                <Notice
-                                    text={"Match ID: " + matchState.matchID}
-                                    type="info"
-                                >
-                                    <CopyIcon onclick={handleCopyIconClick} />
-                                </Notice>
-                            </div>
-                            <div className="col"></div>
+    if (matchState.waiting) {
+        return (
+            <TitleBox><Spinner /></TitleBox>
+        );
+    } else if (matchState.matchID !== undefined) {
+        return (
+            <TitleBox>
+                <div>
+                    <div className="row">
+                        <div className="col"></div>
+                        <div className="col-6">
+                            <Notice
+                                text={"Match ID: " + matchState.matchID}
+                                type="info"
+                            >
+                                <CopyIcon onclick={handleCopyIconClick} />
+                            </Notice>
                         </div>
-                        <div className="row">
-                            <div className="col"></div>
-                            <div className="col-6 text-center">
-                                <span>Waiting for opponent...</span>
-                            </div>
-                            <div className="col"></div>
-                        </div>
+                        <div className="col"></div>
                     </div>
-                </TitleBox>
-            );
-        }
+                    <div className="row">
+                        <div className="col"></div>
+                        <div className="col-6 text-center">
+                            <span>Waiting for opponent...</span>
+                        </div>
+                        <div className="col"></div>
+                    </div>
+                </div>
+            </TitleBox>
+        );
     } else {
         return (
             <TitleBox>

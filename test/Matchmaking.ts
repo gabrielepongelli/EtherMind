@@ -153,7 +153,7 @@ describe("Matchmaking", function () {
                 const matchId = await getMatchFromEvent(tx1);
 
                 const tx2 = await game.connect(challenger).joinMatch(matchId, 10);
-                const eventInterface = new ethers.Interface(["event MatchStarted(address indexed id, address creator, address challenger)"]);
+                const eventInterface = new ethers.Interface(["event MatchStarted(address indexed id, address creator, address indexed challenger)"]);
                 const event = await getEvent(tx2, eventInterface, "MatchStarted");
 
                 expect(event.id).to.be.equal(matchId);

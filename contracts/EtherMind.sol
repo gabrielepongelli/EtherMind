@@ -95,8 +95,16 @@ contract EtherMind {
      */
 
     event MatchCreated(address indexed id, address indexed creator);
-    event MatchStarted(address indexed id, address creator, address challenger);
-    event StakeProposal(address indexed id, uint256 proposal);
+    event MatchStarted(
+        address indexed id,
+        address creator,
+        address indexed challenger
+    );
+    event StakeProposal(
+        address indexed id,
+        address indexed by,
+        uint256 proposal
+    );
     event StakeFixed(address indexed id, uint256 stake);
     event StakePayed(address indexed id, address player);
     event GameStarted(address indexed id);
@@ -227,7 +235,7 @@ contract EtherMind {
         emit MatchStarted(id, game.creator, game.challenger);
 
         game.newStake(msg.sender, stake);
-        emit StakeProposal(id, game.stake);
+        emit StakeProposal(id, msg.sender, game.stake);
     }
 
     /**
@@ -254,7 +262,7 @@ contract EtherMind {
             // stake value decided
             emit StakeFixed(id, stake);
         } else {
-            emit StakeProposal(id, game.stake);
+            emit StakeProposal(id, msg.sender, game.stake);
         }
     }
 

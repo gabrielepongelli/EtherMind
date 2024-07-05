@@ -1,27 +1,7 @@
 
 import { ethers } from 'ethers';
-import { assertDefined } from './utils';
 import { contract } from '../configs/contract';
 import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
-
-// if event happened, display on console
-contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
-    console.log(`MatchStarted event: Mid = ${Mid}, by = ${addressCreator}, challenger = ${addressChallenger}`);
-
-});
-
-// if event happened, display on console
-contract.on('StakeProposal', (Mid, proposal) => {
-    console.log(`StakeProposal event: Mid = ${Mid}, stake = ${proposal}`);
-    // show new proposed stake to the user
-
-});
-
-// if event happened, display on console
-contract.on('StakeFixed', (Mid, stake) => {
-    console.log(`StakeFixed event: Mid = ${Mid}, stake = ${stake}`);
-
-});
 
 // if event happened, display on console
 contract.on('StakePayed', (Mid, player) => {
@@ -135,7 +115,7 @@ export const createMatch = async (otherPlayerAddress: string): Promise<CreateMat
 
         if (otherPlayerAddress) {
             checkPlayerAddress(otherPlayerAddress);
-            otherPlayerAddress = '0x' + otherPlayerAddress;
+            otherPlayerAddress = otherPlayerAddress.startsWith('0x') ? otherPlayerAddress : '0x' + otherPlayerAddress;
         } else {
             otherPlayerAddress = ethers.ZeroAddress;
         }
@@ -157,10 +137,17 @@ type JoinMatchResult =
     | { success: true; tx: ethers.TransactionResponse }
     | { success: false; error: Error };
 
-export async function joinMatch(Address: string, stake: bigint): Promise<JoinMatchResult> {
+export const joinMatch = async (matchId: string, stake: bigint): Promise<JoinMatchResult> => {
     try {
-        //as long as it is properly formatted the conversion string->address should be handlesd by itself
-        const tx = await contract.joinMatch(Address, stake);
+
+        if (matchId) {
+            checkPlayerAddress(matchId);
+            matchId = matchId.startsWith('0x') ? matchId : '0x' + matchId;
+        } else {
+            matchId = ethers.ZeroAddress;
+        }
+
+        const tx = await contract.joinMatch(matchId, stake);
         console.log('Transaction:', tx);
         //return the result and some data
         return { success: true, tx };
@@ -170,9 +157,9 @@ export async function joinMatch(Address: string, stake: bigint): Promise<JoinMat
     }
 }
 
-export async function proposeStake(Address: string, stake: bigint) {
+export const proposeStake = async (matchId: string, stake: bigint) => {
     try {
-        const tx = await contract.stakeProposal(Address, stake);
+        const tx = await contract.stakeProposal(matchId, stake);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);
