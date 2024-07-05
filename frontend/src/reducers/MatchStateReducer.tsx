@@ -7,7 +7,8 @@ export const initialMatchState: MatchState = {
     matchID: undefined,
     stakeProposed: undefined,
     opponent: undefined,
-    proposed: undefined
+    proposed: undefined,
+    payed: undefined
 };
 
 export type MatchStateAction =
@@ -20,6 +21,9 @@ export type MatchStateAction =
     | { type: "stake proposal", waiting: true }
     | { type: "stake proposal", waiting: false, proposed: boolean, amount: bigint }
     | { type: "stake approved", amount: bigint }
+    | { type: "stake payed", waiting: true }
+    | { type: "stake payed", waiting: false }
+    | { type: "game started" }
 
 export const matchStateReducer = (state: MatchState, action: MatchStateAction): MatchState => {
     switch (action.type) {
@@ -68,10 +72,18 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
         case "stake approved":
             return {
                 ...state,
+                waiting: false,
                 phase: Phase.STAKE_PAYMENT,
-                stakeProposed: action.amount
+                stakeProposed: action.amount,
+                payed: false
             };
-        default:
-            return initialMatchState;
+        case 'stake payed':
+            return {
+                ...state,
+                waiting: action.waiting,
+                payed: !action.waiting
+            };
+        case "game started":
+            return { ...state, phase: Phase.GAME_STARTED };
     }
 }

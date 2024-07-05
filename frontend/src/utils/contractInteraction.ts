@@ -4,12 +4,6 @@ import { contract } from '../configs/contract';
 import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
 
 // if event happened, display on console
-contract.on('StakePayed', (Mid, player) => {
-    console.log(`StakePayed event: Mid = ${Mid}, address = ${player}`);
-
-});
-
-// if event happened, display on console
 contract.on('GameStarted', (Mid) => {
     console.log(`GameStarted event: Mid = ${Mid}`);
 
@@ -160,6 +154,18 @@ export const joinMatch = async (matchId: string, stake: bigint): Promise<JoinMat
 export const proposeStake = async (matchId: string, stake: bigint) => {
     try {
         const tx = await contract.stakeProposal(matchId, stake);
+        console.log('Transaction:', tx);
+        //const receipt = await tx.wait();
+        //console.log('Transaction receipt:', receipt);
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+export const payStake = async (matchId: string, stake: bigint) => {
+    try {
+        const tx = await contract.payStake(matchId, { value: stake });
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
         //console.log('Transaction receipt:', receipt);

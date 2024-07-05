@@ -43,7 +43,7 @@ export const StakeDecisionView: React.FC = () => {
         };
 
         contract.on(filterPropose, eventProposeHandler);
-    }, [matchState])
+    }, [matchState]);
 
     const stakeHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
         setStake(BigInt(event.target.value));

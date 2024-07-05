@@ -72,7 +72,7 @@ describe("Stake payment", function () {
             const { game, creator, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
 
             const tx = await game.payStake(matchId, { value: finalStake });
-            const eventInterface = new ethers.Interface(["event StakePayed(address indexed id, address player)"]);
+            const eventInterface = new ethers.Interface(["event StakePayed(address indexed id, address indexed player)"]);
             const event = await getEvent(tx, eventInterface, "StakePayed");
 
             expect(event.id).to.be.equal(matchId);

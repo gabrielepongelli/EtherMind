@@ -4,6 +4,7 @@ import { HomeView } from './component/views/HomeView';
 import { CreateMatchView } from './component/views/CreateMatchView';
 import { JoinMatchView } from './component/views/JoinMatchView';
 import { StakeDecisionView } from './component/views/StakeDecisionView';
+import { StakePaymentView } from './component/views/StakePaymentView';
 
 import { MatchStateContext, MatchStateSetContext } from './contexts/MatchStateContext';
 import { initialMatchState, matchStateReducer } from './reducers/MatchStateReducer';
@@ -44,6 +45,14 @@ const App: React.FC = () => {
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
                         <StakeDecisionView />
+                    </MatchStateSetContext.Provider>
+                </MatchStateContext.Provider>
+            );
+        case Phase.STAKE_PAYMENT:
+            return (
+                <MatchStateContext.Provider value={matchState}>
+                    <MatchStateSetContext.Provider value={dispatchMatchState}>
+                        <StakePaymentView />
                     </MatchStateSetContext.Provider>
                 </MatchStateContext.Provider>
             );

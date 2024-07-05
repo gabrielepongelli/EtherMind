@@ -106,7 +106,7 @@ contract EtherMind {
         uint256 proposal
     );
     event StakeFixed(address indexed id, uint256 stake);
-    event StakePayed(address indexed id, address player);
+    event StakePayed(address indexed id, address indexed player);
     event GameStarted(address indexed id);
     event RoundStarted(
         address indexed id,
