@@ -22,13 +22,6 @@ const config: HardhatUserConfig = {
         sepolia: {
             url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY || ""}`,
             accounts: [process.env.SEPOLIA_PRIVATE_KEY || ""],
-        },
-        hardhat: {
-            //dosen't mine automatically but once every 11-13s
-            mining: {
-              auto: false,
-              interval: [11000, 13000]
-            }
         }
     },
 };

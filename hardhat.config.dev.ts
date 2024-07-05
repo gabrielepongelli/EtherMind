@@ -17,7 +17,16 @@ const config: HardhatUserConfig = {
     gasReporter: {
         currency: 'EUR',
         coinmarketcap: process.env.COINMARKETCAP_API_KEY
-    }
+    },
+    networks: {
+        hardhat: {
+            // dosen't mine automatically but once every 11-13s
+            mining: {
+                auto: false,
+                interval: [11000, 13000]
+            }
+        }
+    },
 };
 
 export default config;
