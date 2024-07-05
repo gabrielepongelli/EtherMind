@@ -106,7 +106,7 @@ describe("Stake decision", function () {
             });
 
             it("Should emit an event when a new stake proposal is issued with valid parameters", async function () {
-                const { game, matchId, challenger, stakeProposal } = await loadFixture(phases.untilJoin);
+                const { game, matchId, creator, stakeProposal } = await loadFixture(phases.untilJoin);
 
                 const newStakeProposal = stakeProposal + 10;
                 const tx = await game.stakeProposal(matchId, newStakeProposal);
@@ -114,7 +114,7 @@ describe("Stake decision", function () {
                 const event = await getEvent(tx, eventInterface, "StakeProposal");
 
                 expect(event.id).to.be.equal(matchId);
-                expect(event.by).to.be.equal(challenger.address);
+                expect(event.by).to.be.equal(creator.address);
                 expect(event.proposal).to.be.equal(newStakeProposal);
             });
 
