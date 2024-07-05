@@ -1,153 +1,120 @@
 
 import { ethers } from 'ethers';
-import { abi as contractAbi } from '../../../artifacts/contracts/EtherMind.sol/EtherMind.json';
+import { assertDefined } from './utils';
+import { contract } from '../configs/contract';
 import { Code, Feedback, hashCode, prepareSalt } from "../utils/contractTypes";
 
-//import.meta.env is the equivalent of dotenv for broswers
-
-// Contract details
-const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-
-//this is if you need to pay
-const privateKey :string = import.meta.env.VITE_PRIVATE_KEY;
-
-let provider : ethers.JsonRpcProvider;
-
-if (!import.meta.env.VITE_LOCAL_NODE){
-    // Connect to Ethereum using Infura
-    const infuraProjectId = import.meta.env.VITE_API_KEY;
-    provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/${infuraProjectId}`);
-}else{
-    // Connect to the Hardhat local network
-    provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-}
-
-// use a specific private key
-const wallet = new ethers.Wallet(privateKey, provider);
-// Connect to the deployed contract
-const contract = new ethers.Contract(contractAddress as string, contractAbi, wallet);
-
-
-
-
-
-//if event happened, display on console
-contract.on('MatchCreated', (Mid, address) => {
-    console.log(`MatchCreated event: Mid = ${Mid}, by = ${address}`);
-
-});
-
-//if event happened, display on console
+// if event happened, display on console
 contract.on('MatchStarted', (Mid, addressCreator, addressChallenger) => {
     console.log(`MatchStarted event: Mid = ${Mid}, by = ${addressCreator}, challenger = ${addressChallenger}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('StakeProposal', (Mid, proposal) => {
     console.log(`StakeProposal event: Mid = ${Mid}, stake = ${proposal}`);
-    //show new proposed stake to the user
+    // show new proposed stake to the user
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('StakeFixed', (Mid, stake) => {
     console.log(`StakeFixed event: Mid = ${Mid}, stake = ${stake}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('StakePayed', (Mid, player) => {
     console.log(`StakePayed event: Mid = ${Mid}, address = ${player}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('GameStarted', (Mid) => {
     console.log(`GameStarted event: Mid = ${Mid}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('RoundStarted', (Mid, round, codeMaddress, codeBaddress) => {
     console.log(`RoundStarted event: Mid = ${Mid}, n rounds = ${round}, codemaster = ${codeMaddress}, codebreaker = ${codeBaddress}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('GuessSubmitted', (Mid, address, guess) => {
     console.log(`GuessSubmitted event: Mid = ${Mid}, by = ${address}, guess = ${guess}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('FeedbackSubmitted', (Mid, address, feedback) => {
     console.log(`FeedbackSubmitted event: Mid = ${Mid}, by = ${address}, clue = ${feedback}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('SolutionHashSubmitted', (Mid, address) => {
     console.log(`SolutionHashSubmitted event: Mid = ${Mid}, by = ${address}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('SolutionSubmitted', (Mid, address, solution) => {
     console.log(`SolutionSubmitted event: Mid = ${Mid}, by = ${address}, solution = ${solution}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('ScoresUpdated', (Mid, crsore, chscore) => {
     console.log(`ScoresUpdated event: Mid = ${Mid}, creator score = ${crsore}, challenger score = ${chscore}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('AfkCheckStarted', (Mid, address, timestamp) => {
     console.log(`AfkCheckStarted event:  Mid = ${Mid}, by = ${address}, timestamp = ${timestamp}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('GameEnded', (Mid) => {
     console.log(`GameEnded event: Mid = ${Mid}`);
-    //TODO say depending on the returned points who won
+    // TODO say depending on the returned points who won
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('MatchEnded', (Mid) => {
     console.log(`MatchEnded event: Mid = ${Mid}`);
-    //TODO say depending on the returned points who won
+    // TODO say depending on the returned points who won
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('RoundEnded', (Mid, nOfRounds) => {
     console.log(`RoundEnded event: Mid = ${Mid}, rounds = ${nOfRounds}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('PlayerPunished', (Mid, address, punishment) => {
     console.log(`PlayerPunished event:  Mid = ${Mid}, by = ${address}, reason for punishment = ${punishment}`);
 
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('RewardDispensed', (Mid, address, currentStake) => {
     console.log(`RewardDispensed event: Mid = ${Mid}, by = ${address}, stake = ${currentStake}`);
-    //TODO say depending on the returned points who won
+    // TODO say depending on the returned points who won
 });
 
-//if event happened, display on console
+// if event happened, display on console
 contract.on('Failure', (Mid, message) => {
     console.log(`Failure event: Mid = ${Mid}, msg = ${message}`);
-    //TODO say depending on the returned points who won
+    // TODO say depending on the returned points who won
 });
 
 
-function check_player_address(otherPlayerAddress: string) {
+function checkPlayerAddress(otherPlayerAddress: string) {
     // Validate the address
     if (!ethers.isAddress(otherPlayerAddress)) {
         throw new Error('Invalid otherplayer address');
@@ -163,10 +130,16 @@ type CreateMatchResult =
     | { success: true; tx: ethers.TransactionResponse }
     | { success: false; error: Error };
 
-export async function NewMatch(otherPlayerAddress: string): Promise<CreateMatchResult> {
-
+export const createMatch = async (otherPlayerAddress: string): Promise<CreateMatchResult> => {
     try {
-        check_player_address(otherPlayerAddress);
+
+        if (otherPlayerAddress) {
+            checkPlayerAddress(otherPlayerAddress);
+            otherPlayerAddress = '0x' + otherPlayerAddress;
+        } else {
+            otherPlayerAddress = ethers.ZeroAddress;
+        }
+
         const tx = await contract.createMatch(otherPlayerAddress);
         console.log('Transaction:', tx);
         //const receipt = await tx.wait();
