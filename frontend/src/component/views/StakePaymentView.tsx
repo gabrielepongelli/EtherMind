@@ -8,9 +8,9 @@ import { Spinner } from "../Spinner";
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
 
-import ethers from "ethers";
 import { contract, wallet } from "../../configs/contract";
 import { payStake } from "../../utils/contractInteraction";
+import { setListener, removeAllListeners } from '../../utils/utils';
 
 export const StakePaymentView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -19,25 +19,17 @@ export const StakePaymentView: React.FC = () => {
     useEffect(() => {
         if (!matchState.payed) {
             const filter = contract.filters.StakePayed(matchState.matchID, wallet.address);
-            const eventHandler = (event: ethers.ContractEventPayload) => {
-                console.log(`StakePayed event: matchID = ${event.args[0]}, by = ${event.args[1]}`);
-
-                dispatchMatchState({ type: "stake payed", waiting: false });
-                contract.off(filter);
-            };
-
-            contract.on(filter, eventHandler);
+            setListener(filter, dispatchMatchState, () => {
+                return { type: "stake payed", waiting: false };
+            });
         } else {
             const filter = contract.filters.GameStarted(matchState.matchID);
-            const eventHandler = (event: ethers.ContractEventPayload) => {
-                console.log(`GameStarted event: matchID = ${event.args[0]}`);
-
-                dispatchMatchState({ type: "game started" });
-                contract.off(filter);
-            };
-
-            contract.on(filter, eventHandler);
+            setListener(filter, dispatchMatchState, () => {
+                return { type: "game started" };
+            });
         }
+
+        return removeAllListeners;
     }, [matchState]);
 
     const payBtnClick = () => {

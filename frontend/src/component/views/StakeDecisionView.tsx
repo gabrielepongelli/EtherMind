@@ -9,9 +9,9 @@ import { Spinner } from "../Spinner";
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
 
-import ethers from "ethers";
 import { contract, wallet } from "../../configs/contract";
 import { proposeStake } from "../../utils/contractInteraction";
+import { setListener, removeAllListeners } from '../../utils/utils';
 
 export const StakeDecisionView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -19,30 +19,26 @@ export const StakeDecisionView: React.FC = () => {
     const [stake, setStake] = useState("");
 
     useEffect(() => {
-        const filterApproved = contract.filters.StakeFixed(matchState.matchID, null);
-        const eventApprovedHandler = (event: ethers.ContractEventPayload) => {
-            console.log(`StakeFixed event: matchID = ${event.args[0]}, amount = ${event.args[1]}`);
+        setListener(contract.filters.StakeFixed(matchState.matchID, null),
+            dispatchMatchState, (args) => {
+                return { type: "stake approved", amount: args[1] };
+            });
 
-            dispatchMatchState({ type: "stake approved", amount: event.args[1] });
-            contract.off(filterApproved);
-        };
+        if (matchState.waiting) {
+            const proposalSender = matchState.proposed ? wallet.address : matchState.opponent as string;
 
-        if (!matchState.waiting) {
-            // wait also for approvals
-            contract.on(filterApproved, eventApprovedHandler);
+            const filter = contract.filters.StakeProposal(matchState.matchID, proposalSender, null);
+            setListener(filter, dispatchMatchState, (args) => {
+                return { type: "stake proposal", waiting: false, proposed: args[1] === wallet.address, amount: args[2] };
+            });
+        } else if (matchState.proposed) {
+            const filter = contract.filters.StakeProposal(matchState.matchID, matchState.opponent as string, null);
+            setListener(filter, dispatchMatchState, (args) => {
+                return { type: "stake proposal", waiting: false, proposed: false, amount: args[2] };
+            });
         }
 
-        const filterPropose = contract.filters.StakeProposal(matchState.matchID, null, null);
-        const eventProposeHandler = (event: ethers.ContractEventPayload) => {
-            console.log(`StakeProposal event: matchID = ${event.args[0]}, by = ${event.args[1]}, stake = ${event.args[2]}`);
-
-            const proposed = event.args[1] === wallet.address;
-
-            dispatchMatchState({ type: "stake proposal", waiting: false, proposed: proposed, amount: event.args[2] });
-            contract.off(filterPropose);
-        };
-
-        contract.on(filterPropose, eventProposeHandler);
+        return removeAllListeners;
     }, [matchState]);
 
     const stakeHandler = (event: React.ChangeEvent<HTMLInputElement>) => {

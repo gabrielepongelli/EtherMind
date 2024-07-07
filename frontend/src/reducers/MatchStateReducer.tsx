@@ -18,7 +18,7 @@ export type MatchStateAction =
     | { type: "created", waiting: false, matchId: string }
     | { type: "joining", waiting: false, random: boolean }
     | { type: "joining", waiting: true }
-    | { type: "started", matchId: string, opponent: string }
+    | { type: "started", matchId: string, opponent: string, joiner: boolean }
     | { type: "stake proposal", waiting: true }
     | { type: "stake proposal", waiting: false, proposed: boolean, amount: string }
     | { type: "stake approved", amount: string }
@@ -65,12 +65,17 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
                 matchID: action.matchId,
                 waiting: true,
                 opponent: action.opponent,
-                proposed: false,
+                proposed: action.joiner,
                 error: undefined
             };
         case "stake proposal":
             if (action.waiting) {
-                return { ...state, waiting: true, error: undefined };
+                return {
+                    ...state,
+                    waiting: true,
+                    proposed: true,
+                    error: undefined
+                };
             } else {
                 return {
                     ...state,

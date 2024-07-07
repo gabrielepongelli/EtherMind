@@ -9,9 +9,9 @@ import { CopyIcon } from '../CopyIcon';
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
 
-import ethers from 'ethers';
 import { createMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
+import { setListener, removeAllListeners } from '../../utils/utils';
 
 export const CreateMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -23,27 +23,21 @@ export const CreateMatchView: React.FC = () => {
     };
 
     useEffect(() => {
-        const eventHandler = (event: ethers.ContractEventPayload) => {
-            console.log(`MatchCreated event: matchID = ${event.args[0]}, by = ${event.args[1]}`);
-
-            dispatchMatchState({ type: 'created', waiting: false, matchId: event.args[0] });
-            contract.off(filter);
-        };
-
         const filter = contract.filters.MatchCreated(null, wallet.address);
-        contract.on(filter, eventHandler);
+        setListener(filter, dispatchMatchState, (args) => {
+            return { type: 'created', waiting: false, matchId: args[0] };
+        });
+
+        return removeAllListeners;
     }, []);
 
     useEffect(() => {
-        const eventHandler = (event: ethers.ContractEventPayload) => {
-            console.log(`MatchStarted event: matchID = ${event.args[0]}, creator = ${event.args[1]}, challenger = ${event.args[2]}`);
-
-            dispatchMatchState({ type: 'started', matchId: event.args[0], opponent: event.args[2] });
-            contract.off(filter);
-        };
-
         const filter = contract.filters.MatchStarted(matchState.matchID);
-        contract.on(filter, eventHandler);
+        setListener(filter, dispatchMatchState, (args) => {
+            return { type: 'started', matchId: args[0], opponent: args[2], joiner: false };
+        });
+
+        return removeAllListeners;
     }, []);
 
     const handlePlayerAddressInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {

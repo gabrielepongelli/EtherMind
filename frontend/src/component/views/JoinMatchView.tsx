@@ -8,9 +8,9 @@ import { Notice } from '../Notice';
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
 
-import ethers from 'ethers';
 import { joinMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
+import { setListener, removeAllListeners } from '../../utils/utils';
 
 export const JoinMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -41,15 +41,12 @@ export const JoinMatchView: React.FC = () => {
             return;
         }
 
-        const eventHandler = (event: ethers.ContractEventPayload) => {
-            console.log(`MatchStarted event: matchID = ${event.args[0]}, creator = ${event.args[1]}, challenger = ${event.args[2]}`);
-
-            dispatchMatchState({ type: 'started', matchId: event.args[0], opponent: event.args[1] });
-            contract.off(filter);
-        };
-
         const filter = contract.filters.MatchStarted(null, null, wallet.address);
-        contract.on(filter, eventHandler);
+        setListener(filter, dispatchMatchState, (args) => {
+            return { type: 'started', matchId: args[0], opponent: args[1], joiner: true };
+        });
+
+        return removeAllListeners;
     }, [matchState.waiting]);
 
     const errorMsg = matchState.error === undefined ? <></> : (
