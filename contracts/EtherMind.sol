@@ -145,7 +145,7 @@ contract EtherMind {
     function punish(address id, address player, string memory reason) internal {
         Game storage game = matchReg.getMatch(id);
 
-        uint256 totalStake = game.stake * 2;
+        uint256 totalStake = game.stake;
 
         // it should pass, it's just to make sure
         require(
@@ -289,6 +289,7 @@ contract EtherMind {
 
         if (hasAllPayed) {
             // both players have payed their stake, so the game can begin
+            game.stopAfkTimer();
             (address maker, address breaker) = game.startNewRound();
             emit GameStarted(id);
             emit RoundStarted(id, game.round, maker, breaker);
@@ -457,7 +458,11 @@ contract EtherMind {
         onlyExistingIds(id)
         onlyGamesInPhase(
             id,
-            ROUND_START | GUESS_SUBMISSION | FEEDBACK_SUBMISSION | ROUND_END
+            STAKE_PAYMENT |
+                ROUND_START |
+                GUESS_SUBMISSION |
+                FEEDBACK_SUBMISSION |
+                ROUND_END
         )
         onlyAllowedPlayers(id)
     {
@@ -486,7 +491,11 @@ contract EtherMind {
         onlyExistingIds(id)
         onlyGamesInPhase(
             id,
-            ROUND_START | GUESS_SUBMISSION | FEEDBACK_SUBMISSION | ROUND_END
+            STAKE_PAYMENT |
+                ROUND_START |
+                GUESS_SUBMISSION |
+                FEEDBACK_SUBMISSION |
+                ROUND_END
         )
         onlyAllowedPlayers(id)
     {
@@ -506,7 +515,7 @@ contract EtherMind {
             // invalid state, return stakes and end the match
             address payable creator = payable(game.creator);
             address payable challenger = payable(game.challenger);
-            uint256 refundAmount = game.stake;
+            uint256 refundAmount = game.stake / 2;
 
             matchReg.deleteMatch(id);
             creator.transfer(refundAmount);
@@ -532,7 +541,7 @@ contract EtherMind {
 
         // it should pass, it's just to make sure
         require(
-            address(this).balance >= game.stake * 2,
+            address(this).balance >= game.stake,
             "Insufficient balance in contract"
         );
 
@@ -548,13 +557,13 @@ contract EtherMind {
         if (winner != address(0)) {
             // transfer the amount to the winner
             // double the stake because
-            uint256 totalStake = game.stake * 2;
+            uint256 totalStake = game.stake;
             matchReg.deleteMatch(id);
             winner.transfer(totalStake);
             emit RewardDispensed(id, msg.sender, totalStake);
         } else {
             // it's a draw
-            uint256 totalStake = game.stake;
+            uint256 totalStake = game.stake / 2;
             address payable creator = payable(game.creator);
             address payable challenger = payable(game.challenger);
 

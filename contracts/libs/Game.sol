@@ -98,7 +98,19 @@ library GameOp {
             ? self.flags + CREATOR_PAYED
             : self.flags + CHALLENGER_PAYED;
 
-        return self.flags == CREATOR_PAYED | CHALLENGER_PAYED;
+        bool res = self.flags == CREATOR_PAYED | CHALLENGER_PAYED;
+        if (res) {
+            self.flags = self.flags - (CM_WAITING | CB_WAITING);
+
+            // set the stake to double the final stake since both players have payed
+            self.stake = self.stake * 2;
+        } else if (self.isCodeBreaker(player)) {
+            self.flags = self.flags + CM_WAITING;
+        } else {
+            self.flags = self.flags + CB_WAITING;
+        }
+
+        return res;
     }
 
     /**

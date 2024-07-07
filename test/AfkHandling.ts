@@ -47,7 +47,6 @@ describe("AFK handling", function () {
                 const phasesToBeChecked = [
                     phases.untilCreate,
                     phases.untilJoin,
-                    phases.untilStakeDecision,
                     phases.untilLastRoundSolution
                 ];
 
@@ -66,6 +65,20 @@ describe("AFK handling", function () {
             });
 
             it("Should fail if called by the player that should make the move", async function () {
+                // try for stake payment
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an afk check");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an afk check");
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeMaker } = await loadFixture(phaseFn);
 
@@ -80,6 +93,20 @@ describe("AFK handling", function () {
             });
 
             it("Should not fail if called by the player that is waiting for the opponent to move", async function () {
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await expect(game.startAfkCheck(matchId)).not.to.be.reverted;
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).not.to.be.reverted;
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -94,6 +121,22 @@ describe("AFK handling", function () {
             });
 
             it("Should fail if called by the player that is waiting for the opponent to move more than once consecutively", async function () {
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("AFK check already started");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("AFK check already started");
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -112,6 +155,20 @@ describe("AFK handling", function () {
 
         describe("Events", function () {
             it("Should emit an event when called by the right player signaling that the timer is started", async function () {
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await expect(game.startAfkCheck(matchId)).to.emit(game, "AfkCheckStarted");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.emit(game, "AfkCheckStarted");
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -126,6 +183,32 @@ describe("AFK handling", function () {
             });
 
             it("Should emit an event when called by the right player signaling that the timer is started with valid parameters", async function () {
+                // try for stake payment
+                {
+                    const { game, matchId, creator, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    const tx = await game.startAfkCheck(matchId);
+                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address indexed id, address from, uint256 time)"]);
+                    const event = await getEvent(tx, eventInterface, "AfkCheckStarted");
+
+                    expect(event.id).to.be.equal(matchId);
+                    expect(event.from).to.be.equal(creator.address);
+                    expect(event.time).to.be.equal(180);
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    const tx = await game.connect(challenger).startAfkCheck(matchId);
+                    const eventInterface = new ethers.Interface(["event AfkCheckStarted(address indexed id, address from, uint256 time)"]);
+                    const event = await getEvent(tx, eventInterface, "AfkCheckStarted");
+
+                    expect(event.id).to.be.equal(matchId);
+                    expect(event.from).to.be.equal(challenger.address);
+                    expect(event.time).to.be.equal(180);
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -166,7 +249,6 @@ describe("AFK handling", function () {
                 const phasesToBeChecked = [
                     phases.untilCreate,
                     phases.untilJoin,
-                    phases.untilStakeDecision,
                     phases.untilLastRoundSolution
                 ];
 
@@ -185,7 +267,7 @@ describe("AFK handling", function () {
             });
 
             it("Should fail if called before starting the AFK timer", async function () {
-                for (const phaseFn of Object.values(codeMakerShouldMove.concat(codeBreakerShouldMove))) {
+                for (const phaseFn of Object.values(codeMakerShouldMove.concat(codeBreakerShouldMove).concat([phases.untilStakeDecision]))) {
                     const { game, matchId } = await loadFixture(phaseFn);
 
                     await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("No AFK check was started");
@@ -193,6 +275,22 @@ describe("AFK handling", function () {
             });
 
             it("Should fail if called before the AFK timer is expired", async function () {
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Too early to end the match for AFK");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Too early to end the match for AFK");
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -209,10 +307,18 @@ describe("AFK handling", function () {
             });
 
             it("Should fail if called after that the AFK timer is started, but the other player made the move before the timer expired", async function () {
-                for (const phaseFn of Object.values(codeMakerShouldMove).concat(codeBreakerShouldMove)) {
-                    const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phaseFn);
+                for (const phaseFn of Object.values(codeMakerShouldMove).concat(codeBreakerShouldMove).concat([phases.untilStakeDecision])) {
+                    const { game, matchId, challenger, finalStake, codeMaker, codeBreaker, solution } = await loadFixture(phaseFn);
 
                     switch (phaseFn) {
+                        case phases.untilStakeDecision:
+                            await game.payStake(matchId, { value: finalStake });
+                            await game.startAfkCheck(matchId);
+
+                            // pay
+                            await game.connect(challenger).payStake(matchId, { value: finalStake });
+                            break;
+
                         case phases.untilStakePayment:
                         case phases.untilFirstRoundSolution:
                         case phases.untilSecondRoundSolution:
@@ -236,7 +342,7 @@ describe("AFK handling", function () {
                         case phases.untilLastRoundSecondLastFeedback:
                             await game.connect(codeMaker).startAfkCheck(matchId);
 
-                            // submit solution hash
+                            // submit guess
                             {
                                 const guess = newCode(1, 2, 3, 4);
                                 await game.connect(codeBreaker).newGuess(matchId, guess);
@@ -278,6 +384,32 @@ describe("AFK handling", function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
 
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).not.to.be.reverted;
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).not.to.be.reverted;
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -303,9 +435,43 @@ describe("AFK handling", function () {
                 }
             });
 
-            it("Should not fail if called after the AFK timer is expired and the opponent hasn't made any move since then", async function () {
+            it("Should fail if called more than once after the AFK timer is expired and the opponent hasn't made any move since then", async function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
+
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await game.stopMatchForAfk(matchId);
+
+                    // in this case if the error is that the match specified 
+                    // doesn't exist it means that the match has been deleted
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await game.stopMatchForAfk(matchId);
+
+                    // in this case if the error is that the match specified 
+                    // doesn't exist it means that the match has been deleted
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist");
+                }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
@@ -346,6 +512,32 @@ describe("AFK handling", function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
 
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).to.emit(game, "MatchEnded");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).to.emit(game, "MatchEnded");
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -374,6 +566,40 @@ describe("AFK handling", function () {
             it("Should emit an event when called correctly signaling that the match is ended with valid parameters", async function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
+
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    const tx = await game.stopMatchForAfk(matchId);
+                    const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
+                    const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
+
+                    expect(event.id).to.be.equal(matchId);
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    const tx = await game.stopMatchForAfk(matchId);
+                    const eventInterface = new ethers.Interface(["event MatchEnded(address indexed id)"]);
+                    const event = await getEvent(tx, eventInterface, "MatchEnded", 1);
+
+                    expect(event.id).to.be.equal(matchId);
+                }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
@@ -412,6 +638,32 @@ describe("AFK handling", function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
 
+                // try for stake payment
+                {
+                    const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).to.emit(game, "PlayerPunished");
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).to.emit(game, "PlayerPunished");
+                }
+
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
@@ -440,6 +692,44 @@ describe("AFK handling", function () {
             it("Should emit an event when called correctly signaling that the player being AFK has been punished with valid parameters", async function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
+
+                // try for stake payment
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    const tx = await game.stopMatchForAfk(matchId);
+                    const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
+                    const event = await getEvent(tx, eventInterface, "PlayerPunished");
+
+                    expect(event.id).to.be.equal(matchId);
+                    expect(event.player).to.be.equal(challenger.address);
+                    expect(event.reason).to.be.equal("Player is AFK");
+                }
+                {
+                    const { game, matchId, creator, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    const tx = await game.stopMatchForAfk(matchId);
+                    const eventInterface = new ethers.Interface(["event PlayerPunished(address indexed id, address player, string reason)"]);
+                    const event = await getEvent(tx, eventInterface, "PlayerPunished");
+
+                    expect(event.id).to.be.equal(matchId);
+                    expect(event.player).to.be.equal(creator.address);
+                    expect(event.reason).to.be.equal("Player is AFK");
+                }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeMaker, codeBreaker } = await loadFixture(phaseFn);
@@ -483,6 +773,38 @@ describe("AFK handling", function () {
             it("Should transfer all the stake amount to the player that started the AFK check if called correctly", async function () {
                 const AVG_BLOCK_TIME = 12;
                 const MAX_AFK_TIME = 180;
+
+                // try for stake payment
+                {
+                    const { game, matchId, creator, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.payStake(matchId, { value: finalStake });
+
+                    await game.startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).to.changeEtherBalances(
+                        [creator, game],
+                        [finalStake, -finalStake]
+                    );
+                }
+                {
+                    const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
+                    await game.connect(challenger).payStake(matchId, { value: finalStake });
+
+                    await game.connect(challenger).startAfkCheck(matchId);
+
+                    await setAutoMine(false);
+                    await mineBlocks(MAX_AFK_TIME / AVG_BLOCK_TIME);
+                    await setAutoMine(true);
+
+                    await expect(game.stopMatchForAfk(matchId)).to.changeEtherBalances(
+                        [challenger, game],
+                        [finalStake, -finalStake]
+                    );
+                }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker, finalStake } = await loadFixture(phaseFn);
