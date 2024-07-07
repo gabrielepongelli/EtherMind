@@ -205,12 +205,22 @@ library GameOp {
     }
 
     /**
-     * Check if all the feedbacks submitted by the CodeMaker are correct.
+     * Check if all the feedbacks specified are correct.
      * @param self The game to use.
+     * @param indexes An array of indexes representing the feedbacks that
+     * have to be checked. They are assumed to be valid indexes.
      */
-    function verifyFeedbacks(Game storage self) internal view returns (bool) {
-        for (uint256 i = 0; i < self.guesses.length; i++) {
-            if (!self.feedbacks[i].verify(self.solution, self.guesses[i])) {
+    function verifyFeedbacks(
+        Game storage self,
+        uint8[] calldata indexes
+    ) internal view returns (bool) {
+        for (uint8 i = 0; i < indexes.length; i++) {
+            if (
+                !self.feedbacks[indexes[i]].verify(
+                    self.solution,
+                    self.guesses[indexes[i]]
+                )
+            ) {
                 return false;
             }
         }

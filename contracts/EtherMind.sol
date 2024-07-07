@@ -418,9 +418,12 @@ contract EtherMind {
     /**
      * Start a new dispute.
      * @param id The id of the match on which to operate.
+     * @param feedbackIdx An array of indexes representing the feedbacks that
+     * have to be checked.
      */
     function dispute(
-        address id
+        address id,
+        uint8[] calldata feedbackIdx
     )
         external
         onlyExistingIds(id)
@@ -439,7 +442,19 @@ contract EtherMind {
             "The request is too late, dispute refuted"
         );
 
-        if (game.verifyFeedbacks()) {
+        require(
+            feedbackIdx.length <= Configs.N_GUESSES && feedbackIdx.length > 0,
+            "Invalid number of feedback indexes passed"
+        );
+
+        for (uint8 i = 0; i < feedbackIdx.length; i++) {
+            require(
+                feedbackIdx[i] < game.feedbacks.length,
+                "Invalid index submitted"
+            );
+        }
+
+        if (game.verifyFeedbacks(feedbackIdx)) {
             punish(id, msg.sender, "Player unjustly accused the opponent");
         } else {
             // cheating detected, punish the OLD CodeMaker (the NEW CodeBreaker)
