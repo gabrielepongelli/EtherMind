@@ -12,6 +12,7 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { contract, wallet } from "../../configs/contract";
 import { proposeStake } from "../../utils/contractInteraction";
 import { setListener, removeAllListeners } from '../../utils/utils';
+import { MatchStateAction } from "../../reducers/MatchStateReducer";
 
 export const StakeDecisionView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -19,7 +20,7 @@ export const StakeDecisionView: React.FC = () => {
     const [stake, setStake] = useState("");
 
     useEffect(() => {
-        setListener(contract.filters.StakeFixed(matchState.matchID, null),
+        setListener<MatchStateAction>(contract.filters.StakeFixed(matchState.matchID, null),
             dispatchMatchState, (args) => {
                 return { type: "stake approved", amount: args[1] };
             });
@@ -28,12 +29,12 @@ export const StakeDecisionView: React.FC = () => {
             const proposalSender = matchState.proposed ? wallet.address : matchState.opponent as string;
 
             const filter = contract.filters.StakeProposal(matchState.matchID, proposalSender, null);
-            setListener(filter, dispatchMatchState, (args) => {
+            setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
                 return { type: "stake proposal", waiting: false, proposed: args[1] === wallet.address, amount: args[2] };
             });
         } else if (matchState.proposed) {
             const filter = contract.filters.StakeProposal(matchState.matchID, matchState.opponent as string, null);
-            setListener(filter, dispatchMatchState, (args) => {
+            setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
                 return { type: "stake proposal", waiting: false, proposed: false, amount: args[2] };
             });
         }
@@ -133,7 +134,6 @@ export const StakeDecisionView: React.FC = () => {
                     <div className="row">
                         <div className="col mb-3">
                             <TextInputBar
-                                id="firstStakeProposalInput"
                                 placeholder='Stake Proposal (in Gwei)'
                                 leftText='⧫'
                                 onchange={stakeHandler}

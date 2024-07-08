@@ -11,6 +11,7 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { joinMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
 import { setListener, removeAllListeners } from '../../utils/utils';
+import { MatchStateAction } from '../../reducers/MatchStateReducer';
 
 export const JoinMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -42,7 +43,7 @@ export const JoinMatchView: React.FC = () => {
         }
 
         const filter = contract.filters.MatchStarted(null, null, wallet.address);
-        setListener(filter, dispatchMatchState, (args) => {
+        setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
             return { type: 'started', matchId: args[0], opponent: args[1], joiner: true };
         });
 
@@ -62,7 +63,6 @@ export const JoinMatchView: React.FC = () => {
         matchIdInput = (
             <div className="mb-3">
                 <TextInputBar
-                    id="matchIdInput"
                     placeholder='Match ID'
                     leftText='0x'
                     onchange={matchIDHandler}
@@ -83,7 +83,6 @@ export const JoinMatchView: React.FC = () => {
                     {matchIdInput}
                     <div className="mb-3">
                         <TextInputBar
-                            id="firstStakeProposalInput"
                             placeholder='Stake Proposal (in Gwei)'
                             leftText='⧫'
                             onchange={stakeHandler}

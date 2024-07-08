@@ -1,9 +1,11 @@
 
 import { ethers } from 'ethers';
 import { contract } from '../configs/contract';
+import { Code, Feedback, Solution } from './generalTypes';
+import { N_COLORS_PER_GUESS } from '../configs/constants';
 
-type Code = number;
-type Feedback = number;
+export type EncodedCode = number;
+export type EncodedFeedback = number;
 
 /**
  * Create a new code given the specified colors.
@@ -13,9 +15,18 @@ type Feedback = number;
  * @param c3 The fourth color.
  * @returns The resulting code.
  */
-const newCode = (c0: number, c1: number, c2: number, c3: number): Code => {
-    return c0 | (c1 << 3) | (c2 << 6) | (c3 << 9);
+const encodeCode = (code: Code): EncodedCode => {
+    return code.c1 | (code.c2 << 3) | (code.c3 << 6) | (code.c4 << 9);
 }
+
+export const decodeCode = (code: EncodedCode): Code => {
+    return {
+        c1: code & 7,
+        c2: (code & (7 << 3)) >> 3,
+        c3: (code & (7 << 6)) >> 6,
+        c4: (code & (7 << 9)) >> 9
+    };
+};
 
 /**
  * Encode the salt so that it is in the correct format expected by the contract.
@@ -31,7 +42,7 @@ const prepareSalt = (salt: number): string => {
  * @param code Code to be hashed.
  * @returns The hash of the code provided.
  */
-const hashCode = (code: Code, salt: number): string => {
+const hashCode = (code: EncodedCode, salt: number): string => {
     return ethers.solidityPackedKeccak256(['uint16', 'bytes4'], [code, prepareSalt(salt)])
 }
 
@@ -41,9 +52,16 @@ const hashCode = (code: Code, salt: number): string => {
  * @param np The number of correct colors in the wrong position.
  * @returns The resulting feedback.
  */
-const newFeedback = (cp: number, np: number): Feedback => {
-    return cp | (np << 4);
+const encodeFeedback = (f: Feedback): EncodedFeedback => {
+    return f.correctPos | (f.wrongPos << 4);
 }
+
+export const decodeFeedback = (f: EncodedFeedback): Feedback => {
+    return {
+        correctPos: f & 15,
+        wrongPos: (f & (15 << 4)) >> 4
+    };
+};
 
 interface EthersError extends Error {
     code: string;
@@ -166,8 +184,8 @@ export const payStake = async (matchId: string, stake: bigint): Promise<Contract
     }
 }
 
-export const uploadHash = async (matchID: string, solution: Code, salt: number) => {
-    let hashedSolution = hashCode(solution, salt);
+export const uploadHash = async (matchID: string, solution: Solution) => {
+    let hashedSolution = hashCode(encodeCode(solution.code), solution.salt);
     try {
         const tx = await contract.newSolutionHash(matchID, hashedSolution);
         console.log('Transaction:', tx);
@@ -179,9 +197,9 @@ export const uploadHash = async (matchID: string, solution: Code, salt: number) 
     }
 }
 
-export const uploadGuess = async (matchID: number, guess: Code) => {
+export const uploadGuess = async (matchID: string, guess: Code) => {
     try {
-        const tx = await contract.newGuess(matchID, guess);
+        const tx = await contract.newGuess(matchID, encodeCode(guess));
         console.log('Transaction:', tx);
         return { success: true, tx };
     } catch (error) {
@@ -191,9 +209,33 @@ export const uploadGuess = async (matchID: number, guess: Code) => {
     }
 }
 
-export const uploadFeedback = async (matchID: number, feedback: Feedback) => {
+export const uploadFeedback = async (matchID: string, feedback: Feedback) => {
     try {
-        const tx = await contract.newFeedback(matchID, feedback);
+        if
+            (feedback.wrongPos >= N_COLORS_PER_GUESS ||
+            feedback.correctPos >= N_COLORS_PER_GUESS ||
+            feedback.correctPos + feedback.wrongPos >= N_COLORS_PER_GUESS) {
+            throw SyntaxError();
+        }
+
+        const tx = await contract.newFeedback(matchID, encodeFeedback(feedback));
+        console.log('Transaction:', tx);
+        return { success: true, tx };
+    } catch (error) {
+        console.error('Error:', error);
+
+        if (error instanceof SyntaxError) {
+            return { success: false, error: 'Invalid feedback. Please enter valid numbers.' };
+        }
+
+        const ethersError = error as EthersError;
+        return { success: false, error: handleEthersError(ethersError) };
+    }
+}
+
+export const sendSolution = async (matchID: string, solution: Solution) => {
+    try {
+        const tx = await contract.uploadSolution(matchID, encodeCode(solution.code), prepareSalt(solution.salt));
         console.log('Transaction:', tx);
         return { success: true, tx };
     } catch (error) {
@@ -203,19 +245,7 @@ export const uploadFeedback = async (matchID: number, feedback: Feedback) => {
     }
 }
 
-export const sendSolution = async (matchID: number, solution: Code, salt: number) => {
-    try {
-        const tx = await contract.uploadSolution(matchID, solution, prepareSalt(salt));
-        console.log('Transaction:', tx);
-        return { success: true, tx };
-    } catch (error) {
-        console.error('Error:', error);
-        const ethersError = error as EthersError;
-        return { success: false, error: handleEthersError(ethersError) };
-    }
-}
-
-export const sendDispute = async (matchID: number) => {
+export const sendDispute = async (matchID: string) => {
     try {
         const tx = await contract.dispute(matchID);
         console.log('Transaction:', tx);
@@ -227,7 +257,7 @@ export const sendDispute = async (matchID: number) => {
     }
 }
 
-export const AFKcheck = async (matchID: number) => {
+export const AFKcheck = async (matchID: string) => {
     try {
         const tx = await contract.startAfkCheck(matchID);
         console.log('Transaction:', tx);
@@ -239,7 +269,7 @@ export const AFKcheck = async (matchID: number) => {
     }
 }
 
-export const HaltGame = async (matchID: number) => {
+export const HaltGame = async (matchID: string) => {
     try {
         const tx = await contract.stopMatchForAfk(matchID);
         console.log('Transaction:', tx);
@@ -251,7 +281,7 @@ export const HaltGame = async (matchID: number) => {
     }
 }
 
-export const checkWhoWinner = async (matchID: number) => {
+export const checkWhoWinner = async (matchID: string) => {
     try {
         const tx = await contract.checkWinner(matchID);
         console.log('Transaction:', tx);

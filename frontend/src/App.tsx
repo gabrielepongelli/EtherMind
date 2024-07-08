@@ -5,17 +5,22 @@ import { CreateMatchView } from './component/views/CreateMatchView';
 import { JoinMatchView } from './component/views/JoinMatchView';
 import { StakeDecisionView } from './component/views/StakeDecisionView';
 import { StakePaymentView } from './component/views/StakePaymentView';
+import { PlayView } from './component/views/PlayView';
 
 import { MatchStateContext, MatchStateSetContext } from './contexts/MatchStateContext';
 import { initialMatchState, matchStateReducer } from './reducers/MatchStateReducer';
 
-import { Phase } from './utils/generalTypes';
+import { GameStateContext, GameStateSetContext } from './contexts/GameStateContext';
+import { initialGameState, gameStateReducer } from './reducers/GameStateReducer';
+
+import { MatchPhase } from './utils/generalTypes';
 
 const App: React.FC = () => {
     const [matchState, dispatchMatchState] = useReducer(matchStateReducer, initialMatchState)
+    const [gameState, dispatchGameState] = useReducer(gameStateReducer, initialGameState)
 
     switch (matchState.phase) {
-        case Phase.START:
+        case MatchPhase.START:
             return (
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
@@ -24,7 +29,7 @@ const App: React.FC = () => {
                 </MatchStateContext.Provider>
             );
 
-        case Phase.CREATING_MATCH:
+        case MatchPhase.CREATING_MATCH:
             return (
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
@@ -32,7 +37,7 @@ const App: React.FC = () => {
                     </MatchStateSetContext.Provider>
                 </MatchStateContext.Provider>
             );
-        case Phase.JOINING_MATCH:
+        case MatchPhase.JOINING_MATCH:
             return (
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
@@ -40,7 +45,7 @@ const App: React.FC = () => {
                     </MatchStateSetContext.Provider>
                 </MatchStateContext.Provider>
             );
-        case Phase.STAKE_DECISION:
+        case MatchPhase.STAKE_DECISION:
             return (
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
@@ -48,11 +53,23 @@ const App: React.FC = () => {
                     </MatchStateSetContext.Provider>
                 </MatchStateContext.Provider>
             );
-        case Phase.STAKE_PAYMENT:
+        case MatchPhase.STAKE_PAYMENT:
             return (
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
                         <StakePaymentView />
+                    </MatchStateSetContext.Provider>
+                </MatchStateContext.Provider>
+            );
+        case MatchPhase.GAME_STARTED:
+            return (
+                <MatchStateContext.Provider value={matchState}>
+                    <MatchStateSetContext.Provider value={dispatchMatchState}>
+                        <GameStateContext.Provider value={gameState}>
+                            <GameStateSetContext.Provider value={dispatchGameState}>
+                                <PlayView />
+                            </GameStateSetContext.Provider>
+                        </GameStateContext.Provider>
                     </MatchStateSetContext.Provider>
                 </MatchStateContext.Provider>
             );

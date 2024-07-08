@@ -11,6 +11,7 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { contract, wallet } from "../../configs/contract";
 import { payStake } from "../../utils/contractInteraction";
 import { setListener, removeAllListeners } from '../../utils/utils';
+import { MatchStateAction } from "../../reducers/MatchStateReducer";
 
 export const StakePaymentView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -19,12 +20,12 @@ export const StakePaymentView: React.FC = () => {
     useEffect(() => {
         if (!matchState.payed) {
             const filter = contract.filters.StakePayed(matchState.matchID, wallet.address);
-            setListener(filter, dispatchMatchState, () => {
+            setListener<MatchStateAction>(filter, dispatchMatchState, () => {
                 return { type: "stake payed", waiting: false };
             });
         } else {
             const filter = contract.filters.GameStarted(matchState.matchID);
-            setListener(filter, dispatchMatchState, () => {
+            setListener<MatchStateAction>(filter, dispatchMatchState, () => {
                 return { type: "game started" };
             });
         }

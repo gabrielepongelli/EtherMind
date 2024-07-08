@@ -585,7 +585,7 @@ describe("Gameplay", function () {
                 const { game, matchId, codeMaker, codeBreaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
                 const tx = await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint round, address codemaker, address codebreaker)"]);
+                const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint indexed round, address codemaker, address codebreaker)"]);
                 const event = await getEvent(tx, eventInterface, "RoundStarted", 2);
 
                 expect(event.id).to.be.equal(matchId);

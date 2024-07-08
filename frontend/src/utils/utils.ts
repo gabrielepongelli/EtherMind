@@ -2,6 +2,11 @@ import ethers from "ethers";
 import { MatchStateAction } from "../reducers/MatchStateReducer";
 import { contract } from "../configs/contract";
 
+import { COLOR_CODES } from "../configs/constants";
+import { Color } from "./generalTypes";
+
+export type Pair<T1, T2> = [T1, T2];
+
 /**
  * Extract a value or raise an exception if it is undefined.
  * @param value Value to extract.
@@ -16,7 +21,7 @@ export const assertDefined = <T>(value: T | undefined, errorMessage: string = "V
     return value;
 }
 
-export const setListener = (topic: ethers.DeferredTopicFilter, distpatchFn: React.Dispatch<MatchStateAction>, actionFn: (args: any[]) => MatchStateAction) => {
+export const setListener = <T>(topic: ethers.DeferredTopicFilter, distpatchFn: React.Dispatch<T>, actionFn: (args: any[]) => T) => {
     const eventHandler = (event: ethers.ContractEventPayload) => {
         let logMsg = `${event.eventName} event:`;
         const args = event.args.toObject();
@@ -34,4 +39,14 @@ export const setListener = (topic: ethers.DeferredTopicFilter, distpatchFn: Reac
 
 export const removeAllListeners = () => {
     contract.removeAllListeners();
+}
+
+export const colorToIdx = (color: Color) => {
+    return COLOR_CODES.findIndex((c) => { return c.color == color });
+}
+
+export const getRandomInt = () => {
+    const randomBuffer = new Uint32Array(1);
+    window.crypto.getRandomValues(randomBuffer);
+    return randomBuffer[0];
 }

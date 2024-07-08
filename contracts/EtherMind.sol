@@ -110,7 +110,7 @@ contract EtherMind {
     event GameStarted(address indexed id);
     event RoundStarted(
         address indexed id,
-        uint round,
+        uint indexed round,
         address codemaker,
         address codebreaker
     );

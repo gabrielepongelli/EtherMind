@@ -59,7 +59,7 @@ export const getMatchFromEvent = async (tx: ContractTransactionResponse): Promis
  * @throws Error if an error occurred.
  */
 export const getRoles = async (tx: ContractTransactionResponse): Promise<any> => {
-    const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint round, address codemaker, address codebreaker)"]);
+    const eventInterface = new ethers.Interface(["event RoundStarted(address indexed id, uint indexed round, address codemaker, address codebreaker)"]);
     const event = assertDefined(await getEvent(tx, eventInterface, "RoundStarted", 2));
 
     const codeBreaker = event.codebreaker;

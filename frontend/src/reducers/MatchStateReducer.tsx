@@ -1,7 +1,7 @@
-import { MatchState, Phase } from '../utils/generalTypes';
+import { MatchState, MatchPhase } from '../utils/generalTypes';
 
 export const initialMatchState: MatchState = {
-    phase: Phase.START,
+    phase: MatchPhase.START,
     waiting: false,
     randomJoin: undefined,
     matchID: undefined,
@@ -32,7 +32,7 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
         case "creating":
             return {
                 ...state,
-                phase: Phase.CREATING_MATCH,
+                phase: MatchPhase.CREATING_MATCH,
                 error: undefined
             };
         case "created":
@@ -52,7 +52,7 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
             } else {
                 return {
                     ...state,
-                    phase: Phase.JOINING_MATCH,
+                    phase: MatchPhase.JOINING_MATCH,
                     randomJoin: action.random,
                     waiting: false,
                     error: undefined
@@ -61,7 +61,7 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
         case "started":
             return {
                 ...state,
-                phase: Phase.STAKE_DECISION,
+                phase: MatchPhase.STAKE_DECISION,
                 matchID: action.matchId,
                 waiting: true,
                 opponent: action.opponent,
@@ -89,7 +89,7 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
             return {
                 ...state,
                 waiting: false,
-                phase: Phase.STAKE_PAYMENT,
+                phase: MatchPhase.STAKE_PAYMENT,
                 stakeProposed: BigInt(action.amount),
                 payed: false,
                 error: undefined
@@ -102,7 +102,7 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
                 error: undefined
             };
         case "game started":
-            return { ...state, phase: Phase.GAME_STARTED, error: undefined };
+            return { ...state, phase: MatchPhase.GAME_STARTED, error: undefined };
         case "error":
             return { ...state, waiting: false, error: action.msg }
     }
