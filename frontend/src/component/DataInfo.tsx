@@ -6,6 +6,6 @@ interface DataInfoProps {
 
 export const DataInfo: React.FC<DataInfoProps> = ({ text }) => {
     return (
-        <input type="text" className="form-control" placeholder={text} disabled={true}></input>
+        <p className="form-control flex-grow-1 text-nowrap bg-body-secondary">{text}</p>
     );
 }

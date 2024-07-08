@@ -54,17 +54,11 @@ export const CreateMatchView: React.FC = () => {
     }
 
     const errorMsg = matchState.error === undefined ? <></> : (
-        <div className="row">
-            <div className="col"></div>
-            <div className="col-6">
-                <Notice
-                    text={matchState.error}
-                    type="failure"
-                    children={undefined}
-                />
-            </div>
-            <div className="col"></div>
-        </div>
+        <Notice
+            text={matchState.error}
+            type="failure"
+            children={undefined}
+        />
     );
 
     if (matchState.waiting) {
@@ -76,25 +70,13 @@ export const CreateMatchView: React.FC = () => {
             <TitleBox>
                 <div>
                     {errorMsg}
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-6">
-                            <Notice
-                                text={"Match ID: " + matchState.matchID}
-                                type="info"
-                            >
-                                <CopyIcon onclick={handleCopyIconClick} />
-                            </Notice>
-                        </div>
-                        <div className="col"></div>
-                    </div>
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-6 text-center">
-                            <span>Waiting for opponent...</span>
-                        </div>
-                        <div className="col"></div>
-                    </div>
+                    <Notice
+                        text={"Match ID: " + matchState.matchID}
+                        type="info"
+                    >
+                        <CopyIcon onclick={handleCopyIconClick} />
+                    </Notice>
+                    <p className='text-center'>Waiting for opponent...</p>
                 </div>
             </TitleBox>
         );
@@ -103,30 +85,19 @@ export const CreateMatchView: React.FC = () => {
             <TitleBox>
                 <div>
                     {errorMsg}
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-6 mb-3">
-                            <TextInputBar
-                                id="guestAddressInput"
-                                placeholder='Guest Address (Optional)'
-                                leftText='0x'
-                                children={<></>}
-                                onchange={handlePlayerAddressInputChange} />
-                        </div>
-                        <div className="col"></div>
+                    <div className='mb-3'>
+                        <TextInputBar
+                            id="guestAddressInput"
+                            placeholder='Guest Address (Optional)'
+                            leftText='0x'
+                            children={<></>}
+                            onchange={handlePlayerAddressInputChange} />
                     </div>
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-1">
-                            <Button
-                                text="Create"
-                                danger={false}
-                                disabled={false}
-                                onclick={onCreateBtnClick} />
-                        </div>
-                        <div className="col-5"></div>
-                        <div className="col"></div>
-                    </div>
+                    <Button
+                        text="Create"
+                        danger={false}
+                        disabled={false}
+                        onclick={onCreateBtnClick} />
                 </div>
             </TitleBox>
         );

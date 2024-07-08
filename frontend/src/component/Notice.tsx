@@ -12,11 +12,11 @@ export const Notice: React.FC<NoticeProps> = ({ text, type, children }) => {
     const alertClass = (): string => {
         switch (type) {
             case 'info':
-                return "alert alert-primary d-flex justify-content-" + justify;
+                return "alert alert-primary";
             case 'success':
-                return "alert alert-success d-flex justify-content-" + justify;
+                return "alert alert-success";
             case 'failure':
-                return "alert alert-danger d-flex justify-content-" + justify;
+                return "alert alert-danger";
         }
     }
 
@@ -25,9 +25,11 @@ export const Notice: React.FC<NoticeProps> = ({ text, type, children }) => {
             className={alertClass()}
             role='alert'
         >
-            <span>{text}</span>
-            <div>
-                {children}
+            <div className={'row justify-content-' + justify}>
+                <span className='col text-center'>{text}</span>
+                <div className='col-1'>
+                    {children}
+                </div>
             </div>
         </div>
     );

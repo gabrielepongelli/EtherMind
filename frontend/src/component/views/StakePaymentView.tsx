@@ -43,28 +43,24 @@ export const StakePaymentView: React.FC = () => {
 
     const err = matchState.error !== undefined;
     const errorMsg = err ? (
-        <div className="row">
-            <div className="col-1"></div>
-            <div className="col">
-                <Notice
-                    text={matchState.error as string}
-                    type="failure"
-                    children={undefined}
-                />
-            </div>
-            <div className="col-1"></div>
+        <div className="mt-5">
+            <Notice
+                text={matchState.error as string}
+                type="failure"
+                children={undefined}
+            />
         </div>
     ) : <></>;
 
     const infoBar = (
-        <div className="row">
-            <div className="col-5 mb-3">
+        <div className={"row" + (err ? "" : " mb-5")}>
+            <div className="col">
                 <DataInfo text={"Match ID: " + matchState.matchID} />
             </div>
-            <div className="col-2 mb-3">
+            <div className="col">
                 <DataInfo text={"Stake: " + matchState.stakeProposed + " Gwei"} />
             </div>
-            <div className="col-5 mb-3">
+            <div className="col">
                 <DataInfo text={"Opponent: " + matchState.opponent} />
             </div>
         </div>
@@ -75,13 +71,7 @@ export const StakePaymentView: React.FC = () => {
             <TitleBox>
                 <div>
                     {infoBar}
-                    <div className="row mt-5">
-                        <div className="col-1"></div>
-                        <div className="col">
-                            <Spinner />
-                        </div>
-                        <div className="col-1"></div>
-                    </div>
+                    <Spinner />
                 </div>
             </TitleBox>
         );
@@ -91,22 +81,12 @@ export const StakePaymentView: React.FC = () => {
                 <div>
                     {infoBar}
                     {errorMsg}
-                    <div className={err ? "row" : "row mt-5"}>
-                        <div className="col-1"></div>
-                        <div className="col">
-                            <Notice
-                                text={"Payment confirmed"}
-                                type="success"
-                                children={undefined} />
-                        </div>
-                        <div className="col-1"></div>
-                    </div>
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-6 text-center">
-                            <span>Waiting for opponent...</span>
-                        </div>
-                        <div className="col"></div>
+                    <Notice
+                        text={"Payment confirmed"}
+                        type="success"
+                        children={undefined} />
+                    <div className="text-center">
+                        <span>Waiting for opponent...</span>
                     </div>
                 </div>
             </TitleBox>
@@ -117,17 +97,11 @@ export const StakePaymentView: React.FC = () => {
                 <div>
                     {infoBar}
                     {errorMsg}
-                    <div className={err ? "row" : "row mt-5"}>
-                        <div className="col-1"></div>
-                        <div className="col-3 container d-flex mt-5">
-                            <Button
-                                text="Pay"
-                                danger={false}
-                                disabled={false}
-                                onclick={payBtnClick} />
-                        </div>
-                        <div className="col-1"></div>
-                    </div>
+                    <Button
+                        text="Pay"
+                        danger={false}
+                        disabled={false}
+                        onclick={payBtnClick} />
                 </div>
             </TitleBox>
         );

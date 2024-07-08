@@ -11,7 +11,7 @@ export const Button: React.FC<ButtonProps> = ({ text, danger, onclick, disabled 
     return (
         <button
             type="button"
-            className={danger ? "btn btn-danger container" : "btn btn-primary container"}
+            className={danger ? "btn btn-danger container-fluid" : "btn btn-primary container-fluid"}
             onClick={onclick}
             disabled={disabled}
         >

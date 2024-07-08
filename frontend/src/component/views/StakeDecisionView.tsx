@@ -66,29 +66,23 @@ export const StakeDecisionView: React.FC = () => {
 
     const err = matchState.error !== undefined;
     const errorMsg = err ? (
-        <div className="row mt-5">
-            <div className="col-1"></div>
-            <div className="col">
-                <Notice
-                    text={matchState.error as string}
-                    type="failure"
-                    children={undefined}
-                />
-            </div>
-            <div className="col-1"></div>
+        <div className="mt-5">
+            <Notice
+                text={matchState.error as string}
+                type="failure"
+                children={undefined}
+            />
         </div>
     ) : <></>;
 
     const infoBar = (
-        <div className="row">
-            <div className="col-1"></div>
-            <div className="col mb-3">
+        <div className={"row justify-content-center" + (err ? "" : " mb-5")}>
+            <div className="col">
                 <DataInfo text={"Match ID: " + matchState.matchID} />
             </div>
-            <div className="col mb-3">
+            <div className="col">
                 <DataInfo text={"Opponent: " + matchState.opponent} />
             </div>
-            <div className="col-1"></div>
         </div>
     );
 
@@ -97,13 +91,7 @@ export const StakeDecisionView: React.FC = () => {
             <TitleBox>
                 <div>
                     {infoBar}
-                    <div className="row mt-5">
-                        <div className="col-1"></div>
-                        <div className="col">
-                            <Spinner />
-                        </div>
-                        <div className="col-1"></div>
-                    </div>
+                    <Spinner />
                 </div>
             </TitleBox>
         );
@@ -113,22 +101,12 @@ export const StakeDecisionView: React.FC = () => {
                 <div>
                     {infoBar}
                     {errorMsg}
-                    <div className={err ? "row" : "row mt-5"}>
-                        <div className="col-1"></div>
-                        <div className="col">
-                            <Notice
-                                text={"Proposed: " + matchState.stakeProposed + " Gwei"}
-                                type="success"
-                                children={undefined} />
-                        </div>
-                        <div className="col-1"></div>
-                    </div>
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-6 text-center">
-                            <span>Waiting for opponent...</span>
-                        </div>
-                        <div className="col"></div>
+                    <Notice
+                        text={"Proposed: " + matchState.stakeProposed + " Gwei"}
+                        type="success"
+                        children={undefined} />
+                    <div className="text-center">
+                        <span>Waiting for opponent...</span>
                     </div>
                 </div>
             </TitleBox>
@@ -139,34 +117,23 @@ export const StakeDecisionView: React.FC = () => {
                 <div>
                     {infoBar}
                     {errorMsg}
-                    <div className={err ? "row" : "row mt-5"}>
-                        <div className="col-1"></div>
-                        <div className="col">
-                            <Notice
-                                text={"Stake proposed: " + matchState.stakeProposed + " Gwei"}
-                                type="info"
-                                children={undefined} />
-                        </div>
-                        <div className="col-1"></div>
+                    <Notice
+                        text={"Stake proposed: " + matchState.stakeProposed + " Gwei"}
+                        type="info"
+                        children={undefined} />
+                    <div className='justify-content-center'>
+                        <Button
+                            text="Confirm"
+                            danger={false}
+                            disabled={false}
+                            onclick={confirmBtnClick} />
                     </div>
-                    <div className="row">
-                        <div className="col-1"></div>
-                        <div className="col container d-flex">
-                            <Button
-                                text="Confirm"
-                                danger={false}
-                                disabled={false}
-                                onclick={confirmBtnClick} />
-                        </div>
-                        <div className="col-1"></div>
-                    </div>
-                    <div className="row text-center mb-5 pt-3">
-                        <div className="col pt-4">
+                    <div className="text-center mb-5 pt-3">
+                        <div className="pt-4">
                             <span>or</span>
                         </div>
                     </div>
                     <div className="row">
-                        <div className="col-1"></div>
                         <div className="col mb-3">
                             <TextInputBar
                                 id="firstStakeProposalInput"
@@ -175,14 +142,13 @@ export const StakeDecisionView: React.FC = () => {
                                 onchange={stakeHandler}
                                 children={<></>} />
                         </div>
-                        <div className="col-1">
+                        <div className="col-3">
                             <Button
                                 text="Propose"
                                 danger={false}
                                 disabled={false}
                                 onclick={proposeBtnClick} />
                         </div>
-                        <div className="col-1"></div>
                     </div>
                 </div>
             </TitleBox>

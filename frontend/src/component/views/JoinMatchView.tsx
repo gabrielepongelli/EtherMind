@@ -50,33 +50,23 @@ export const JoinMatchView: React.FC = () => {
     }, [matchState.waiting]);
 
     const errorMsg = matchState.error === undefined ? <></> : (
-        <div className="row">
-            <div className="col"></div>
-            <div className="col-6">
-                <Notice
-                    text={matchState.error}
-                    type="failure"
-                    children={undefined}
-                />
-            </div>
-            <div className="col"></div>
-        </div>
+        <Notice
+            text={matchState.error}
+            type="failure"
+            children={undefined}
+        />
     );
 
     let matchIdInput = (<></>);
     if (!matchState.randomJoin) {
         matchIdInput = (
-            <div className="row">
-                <div className="col"></div>
-                <div className="col-6 mb-3">
-                    <TextInputBar
-                        id="matchIdInput"
-                        placeholder='Match ID'
-                        leftText='0x'
-                        onchange={matchIDHandler}
-                        children={<></>} />
-                </div>
-                <div className="col"></div>
+            <div className="mb-3">
+                <TextInputBar
+                    id="matchIdInput"
+                    placeholder='Match ID'
+                    leftText='0x'
+                    onchange={matchIDHandler}
+                    children={<></>} />
             </div>
         );
     }
@@ -91,29 +81,23 @@ export const JoinMatchView: React.FC = () => {
                 <div>
                     {errorMsg}
                     {matchIdInput}
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-6 mb-3">
-                            <TextInputBar
-                                id="firstStakeProposalInput"
-                                placeholder='Stake Proposal (in Gwei)'
-                                leftText='⧫'
-                                onchange={stakeHandler}
-                                children={<></>} />
-                        </div>
-                        <div className="col"></div>
+                    <div className="mb-3">
+                        <TextInputBar
+                            id="firstStakeProposalInput"
+                            placeholder='Stake Proposal (in Gwei)'
+                            leftText='⧫'
+                            onchange={stakeHandler}
+                            children={<></>} />
                     </div>
-                    <div className="row">
-                        <div className="col"></div>
-                        <div className="col-1">
+                    <div className='row'>
+                        <div className='col-auto'>
                             <Button
                                 text="Join"
                                 danger={false}
                                 disabled={false}
                                 onclick={onJoinBtnClick} />
                         </div>
-                        <div className="col-5"></div>
-                        <div className="col"></div>
+                        <div className='col'></div>
                     </div>
                 </div>
             </TitleBox>
