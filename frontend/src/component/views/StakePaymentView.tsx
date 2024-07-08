@@ -41,19 +41,16 @@ export const StakePaymentView: React.FC = () => {
         dispatchMatchState({ type: 'stake payed', waiting: true });
     }
 
-    const err = matchState.error !== undefined;
-    const errorMsg = err ? (
-        <div className="mt-5">
-            <Notice
-                text={matchState.error as string}
-                type="failure"
-                children={undefined}
-            />
-        </div>
+    const errorMsg = matchState.error !== undefined ? (
+        <Notice
+            text={matchState.error as string}
+            type="failure"
+            children={undefined}
+        />
     ) : <></>;
 
     const infoBar = (
-        <div className={"row" + (err ? "" : " mb-5")}>
+        <div className="row mb-5">
             <div className="col">
                 <DataInfo text={"Match ID: " + matchState.matchID} />
             </div>

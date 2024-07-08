@@ -64,19 +64,16 @@ export const StakeDecisionView: React.FC = () => {
         dispatchMatchState({ type: 'stake proposal', waiting: true });
     }
 
-    const err = matchState.error !== undefined;
-    const errorMsg = err ? (
-        <div className="mt-5">
-            <Notice
-                text={matchState.error as string}
-                type="failure"
-                children={undefined}
-            />
-        </div>
+    const errorMsg = matchState.error !== undefined ? (
+        <Notice
+            text={matchState.error as string}
+            type="failure"
+            children={undefined}
+        />
     ) : <></>;
 
     const infoBar = (
-        <div className={"row justify-content-center" + (err ? "" : " mb-5")}>
+        <div className="row justify-content-center mb-5">
             <div className="col">
                 <DataInfo text={"Match ID: " + matchState.matchID} />
             </div>
