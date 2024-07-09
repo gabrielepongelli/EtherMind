@@ -8,6 +8,7 @@ import { ActionBox } from "../ActionBox";
 import { Spinner } from "../Spinner";
 import { GuessViewer } from "../GuessViewer";
 import { GuessHistory } from "../GuessHistory";
+import { SolutionRemainder } from "../SolutionRemainder";
 import { CodeSubmitForm } from "../CodeSubmitForm";
 import { FeedbackSubmitForm } from "../FeedbackSubmitForm";
 
@@ -172,6 +173,7 @@ export const PlayView: React.FC = () => {
                             </div>
                         );
                     } else {
+                        // it's a guess
                         return (
                             <div className="text-center">
                                 <p>Make a guess</p>
@@ -231,11 +233,17 @@ export const PlayView: React.FC = () => {
                 guesses={gameState.guessHistory}
                 guessTotal={N_GUESSES.toString()} />;
 
+        const solutionRemainder = gameState.role === "maker"
+            && gameState.solution !== undefined
+            ? <SolutionRemainder solution={gameState.solution.code} />
+            : <></>;
+
         return (
             <TitleBox>
                 <div>
                     {infoBar}
                     {errorMsg}
+                    {solutionRemainder}
                     <ActionBox
                         role={gameState.role as string}
                         roundNumber={(gameState.round as number).toString()}
