@@ -34,7 +34,8 @@ export enum MatchPhase {
     JOINING_MATCH,
     STAKE_DECISION,
     STAKE_PAYMENT,
-    GAME_STARTED
+    GAME_STARTED,
+    GAME_ENDED
 }
 
 export interface MatchState {
@@ -47,12 +48,18 @@ export interface MatchState {
     proposed: boolean // whether the stake proposal is coming from you or not
     payed: boolean // whether the stake has been payed or not
     error?: string // the error message
+    yourFinalScore?: number
+    opponentFinalScore?: number
+    endMsg?: string
+    punished?: boolean
 }
 
 export enum GamePhase {
     CODE_SUBMISSION,
     FEEDBACK_SUBMISSION,
-    WAITING_OPPONENT
+    WAITING_OPPONENT,
+    END_ROUND,
+    DISPUTE
 }
 
 export interface GameState {
@@ -66,5 +73,9 @@ export interface GameState {
     guessHistory: Pair<Code, Feedback>[] // history of all the guesses made during the round
     lastGuess?: Code // the last guess submitted
     solution?: Solution // the solution submitted for this round
+    roundEnded: boolean // whether the current round is ended or not
+    scoresUpdated: boolean // whether the scores have been updated or not
+    oldScore: number // the score of the last round
     error?: string // the error message
+    disputedGuesses?: boolean[] // the indexes of guesses to dispute
 }

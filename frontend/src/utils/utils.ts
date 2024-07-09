@@ -1,6 +1,6 @@
 import ethers from "ethers";
 import { MatchStateAction } from "../reducers/MatchStateReducer";
-import { contract } from "../configs/contract";
+import { contract, provider } from "../configs/contract";
 
 import { COLOR_CODES } from "../configs/constants";
 import { Color } from "./generalTypes";
@@ -21,15 +21,18 @@ export const assertDefined = <T>(value: T | undefined, errorMessage: string = "V
     return value;
 }
 
+const logEvent = (name: ethers.ContractEventName, args: ethers.ethers.Result) => {
+    let logMsg = `${name} event:`;
+    const argsObj = args.toObject();
+    for (const key in argsObj) {
+        logMsg += ` ${key}=${argsObj[key]}`
+    }
+    console.log(logMsg);
+}
+
 export const setListener = <T>(topic: ethers.DeferredTopicFilter, distpatchFn: React.Dispatch<T>, actionFn: (args: any[]) => T) => {
     const eventHandler = (event: ethers.ContractEventPayload) => {
-        let logMsg = `${event.eventName} event:`;
-        const args = event.args.toObject();
-        for (const key in args) {
-            logMsg += ` ${key}=${args[key]}`
-        }
-        console.log(logMsg);
-
+        logEvent(event.eventName, event.args);
         distpatchFn(actionFn(event.args.toArray()));
         contract.off(topic);
     };
@@ -39,6 +42,25 @@ export const setListener = <T>(topic: ethers.DeferredTopicFilter, distpatchFn: R
 
 export const removeAllListeners = () => {
     contract.removeAllListeners();
+}
+
+export const searchEvent = <T>(topic: ethers.DeferredTopicFilter, distpatchFn: React.Dispatch<T>, actionFn: (args: any[]) => T) => {
+    const code = async () => {
+        provider.getLogs({
+            address: await contract.getAddress(),
+            topics: await topic.getTopicFilter()
+        }).then((logs) => {
+            const parsedLog = contract.interface.parseLog(logs[0]);
+            if (parsedLog === null) {
+                return;
+            }
+
+            logEvent(parsedLog.name, parsedLog.args);
+            distpatchFn(actionFn(parsedLog.args.toArray()));
+        }).catch(() => { });
+    };
+
+    code();
 }
 
 export const colorToIdx = (color: Color) => {

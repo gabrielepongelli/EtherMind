@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useReducer } from "react";
 
 import { TitleBox } from "../TitleBox";
 import { Notice } from "../Notice";
@@ -13,33 +13,32 @@ import { CodeSubmitForm } from "../CodeSubmitForm";
 import { FeedbackSubmitForm } from "../FeedbackSubmitForm";
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
-import { GameStateContext, GameStateSetContext } from "../../contexts/GameStateContext";
+import { GameStateAction, gameStateReducer, initialGameState } from "../../reducers/GameStateReducer";
 
 import { contract, wallet } from "../../configs/contract";
-import { uploadHash, uploadGuess, uploadFeedback, decodeCode, decodeFeedback } from "../../utils/contractInteraction";
-import { setListener, removeAllListeners } from '../../utils/utils';
+import { uploadHash, uploadGuess, uploadFeedback, uploadSolution, decodeCode, decodeFeedback, sendDispute, checkWhoWinner } from "../../utils/contractInteraction";
+import { setListener, removeAllListeners, Pair, searchEvent } from '../../utils/utils';
 
-import { GameStateAction } from "../../reducers/GameStateReducer";
 import { GamePhase, Solution, Code, Feedback } from "../../utils/generalTypes";
 
 import { getRandomInt } from "../../utils/utils";
 
 import { N_ROUNDS, N_GUESSES, N_COLORS_PER_GUESS } from "../../configs/constants";
+import { MatchStateAction } from "../../reducers/MatchStateReducer";
 
 export const PlayView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
     const dispatchMatchState = useContext(MatchStateSetContext);
-    const gameState = useContext(GameStateContext);
-    const dispatchGameState = useContext(GameStateSetContext);
+    const [gameState, dispatchGameState] = useReducer(gameStateReducer, initialGameState);
 
     useEffect(() => {
         if (gameState.phase === undefined) {
             const filter = contract.filters.RoundStarted(matchState.matchID, 1, null, null);
             setListener<GameStateAction>(filter, dispatchGameState, (args) => {
                 if (args[2] === wallet.address) {
-                    return { type: "round started", role: "maker", round: args[1] };
+                    return { type: "round started", role: "maker", round: Number(args[1]) };
                 } else {
-                    return { type: "round started", role: "breaker", round: args[1] };
+                    return { type: "round started", role: "breaker", round: Number(args[1]) };
                 }
             });
         } else if ((gameState.phase === GamePhase.CODE_SUBMISSION && gameState.role === 'maker')
@@ -52,10 +51,25 @@ export const PlayView: React.FC = () => {
         } else if ((gameState.phase === GamePhase.CODE_SUBMISSION && gameState.role === 'breaker')
             || (gameState.phase === GamePhase.WAITING_OPPONENT && gameState.role === "maker")) {
 
-            const filter = contract.filters.GuessSubmitted(matchState.matchID, null, null);
-            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
-                return { type: "new guess", waiting: false, guess: decodeCode(Number(args[2])) };
-            });
+            setListener<GameStateAction>(
+                contract.filters.GuessSubmitted(matchState.matchID, null, null),
+                dispatchGameState, (args) => {
+                    return { type: "new guess", waiting: false, guess: decodeCode(Number(args[2])) };
+                });
+
+            setListener<GameStateAction>(
+                contract.filters.RoundEnded(matchState.matchID, gameState.round as number),
+                dispatchGameState, () => {
+                    if (gameState.role === "maker") {
+                        uploadSolution(matchState.matchID as string, gameState.solution as Solution).then((result) => {
+                            if (!result.success) {
+                                dispatchGameState({ type: 'error', msg: result.error as string });
+                            }
+                        });
+                    }
+
+                    return { type: "round ended" };
+                });
         } else if ((gameState.phase === GamePhase.FEEDBACK_SUBMISSION && gameState.role === 'maker')
             || (gameState.phase === GamePhase.WAITING_OPPONENT && gameState.role === "breaker" && gameState.lastGuess !== undefined)) {
 
@@ -63,7 +77,55 @@ export const PlayView: React.FC = () => {
             setListener<GameStateAction>(filter, dispatchGameState, (args) => {
                 return { type: "new feedback", waiting: false, fb: decodeFeedback(Number(args[2])) };
             });
+        } else if (gameState.phase === GamePhase.END_ROUND && !gameState.roundEnded) {
+            const filter = contract.filters.SolutionSubmitted(matchState.matchID, null, null);
+            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
+                return {
+                    type: "final solution submitted",
+                    solution: {
+                        code: decodeCode(Number(args[2])),
+                        salt: 0
+                    }
+                };
+            });
+        } else if (gameState.phase === GamePhase.END_ROUND && gameState.roundEnded && !gameState.scoresUpdated) {
+            const filter = contract.filters.ScoresUpdated(matchState.matchID, null, null);
+            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
+                let updatedScore = 0;
+                if (matchState.randomJoin === undefined) {
+                    // I am the creator
+                    if (gameState.yourScore == Number(args[1])) {
+                        updatedScore = Number(args[2]);
+                    } else {
+                        updatedScore = Number(args[1]);
+                    }
+                } else {
+                    // I am the challenger
+                    if (gameState.yourScore == Number(args[2])) {
+                        updatedScore = Number(args[1]);
+                    } else {
+                        updatedScore = Number(args[2]);
+                    }
+                }
+
+                return {
+                    type: "scores updated",
+                    waiting: false,
+                    score: updatedScore
+                };
+            });
         }
+
+        setListener<MatchStateAction>(
+            contract.filters.PlayerPunished(matchState.matchID, null, null),
+            dispatchMatchState, (args) => {
+                return {
+                    type: "game ended",
+                    reason: "dispute",
+                    punished: args[1] as string === wallet.address,
+                    msg: args[2] as string
+                };
+            });
 
         return removeAllListeners;
     }, [gameState]);
@@ -109,6 +171,62 @@ export const PlayView: React.FC = () => {
             });
             dispatchGameState({ type: 'new guess', waiting: true });
         }
+    }
+
+    const onContinueBtnClick = () => {
+        if (gameState.round === N_ROUNDS && gameState.roundEnded) {
+            checkWhoWinner(matchState.matchID as string)
+                .then((result) => {
+                    if (!result.success
+                        && result.error !== "The match specified does not exist") {
+                        dispatchGameState({
+                            type: 'error',
+                            msg: result.error as string
+                        });
+                    } else {
+                        dispatchMatchState({
+                            type: "game ended",
+                            reason: "game finished",
+                            yourScore: gameState.yourScore,
+                            opponentScore: gameState.opponentScore
+                        });
+                    }
+                });
+            dispatchGameState({ type: "scores updated", waiting: true });
+        } else {
+            console.log("ROUND: ", gameState.round);
+            const filter = contract.filters.RoundStarted(matchState.matchID, gameState.round as number + 1, null, null);
+            searchEvent<GameStateAction>(filter, dispatchGameState, (args) => {
+                console.log("found");
+                if (args[2] === wallet.address) {
+                    return { type: "round started", role: "maker", round: Number(args[1]) };
+                } else {
+                    return { type: "round started", role: "breaker", round: Number(args[1]) };
+                }
+            });
+        }
+    }
+
+    const onGuessDisputeBtnClick = (idx: number, checked: boolean) => {
+        if (checked) {
+            dispatchGameState({ type: "dispute guess added", idx: idx });
+        } else {
+            dispatchGameState({ type: "dispute guess removed", idx: idx });
+        }
+    }
+
+    const onDisputeClick = () => {
+        const indexes = gameState
+            .disputedGuesses?.map((val: boolean, index: number) => val ? index : -1)
+            .filter(index => index !== -1);
+
+        sendDispute(matchState.matchID as string, indexes as number[])
+            .then((result) => {
+                if (!result.success) {
+                    dispatchGameState({ type: 'error', msg: result.error as string });
+                }
+            });
+        dispatchGameState({ type: "dispute started" });
     }
 
     const infoBar = (
@@ -160,9 +278,6 @@ export const PlayView: React.FC = () => {
             }
 
             switch (gameState.phase) {
-                case undefined:
-                    // should not happen
-                    return <></>;
                 case GamePhase.CODE_SUBMISSION:
                     if (gameState.guess === undefined) {
                         // it's a solution
@@ -225,13 +340,117 @@ export const PlayView: React.FC = () => {
                             </div>
                         );
                     }
+                case GamePhase.END_ROUND:
+                    if (gameState.role === "maker") {
+                        const scoreDelta = gameState.yourScore - gameState.oldScore;
+
+                        return (
+                            <div className="text-center">
+                                <Notice
+                                    text="Feedback submitted"
+                                    type="success"
+                                    children={<></>}
+                                />
+                                <Notice
+                                    text={"Earned points: " + scoreDelta.toString()}
+                                    type="info"
+                                    children={<></>}
+                                />
+                                <div className="row">
+                                    <div className="col"></div>
+                                    <div className="col">
+                                        <Button
+                                            text="Continue"
+                                            danger={false}
+                                            disabled={false}
+                                            onclick={onContinueBtnClick}
+                                        />
+                                    </div>
+                                    <div className="col"></div>
+                                </div>
+                            </div>
+                        );
+                    } else {
+                        const isLastGuessCorrect = (gameState.guessHistory.at(-1) as Pair<Code, Feedback>)[1].correctPos == 4;
+
+                        const notice = (
+                            <Notice
+                                text={isLastGuessCorrect
+                                    ? "Correct guess" : "You lost this round"}
+                                type={isLastGuessCorrect ? "success" : "failure"}
+                                children={<></>}
+                            />
+                        );
+
+                        const disputeBtnDisabled = gameState.disputedGuesses?.find((val) => { return val }) === undefined;
+
+                        if (gameState.solution === undefined) {
+                            return (
+                                <div className="text-center">
+                                    {notice}
+                                    <span>Waiting for opponent...</span>
+                                </div>
+                            );
+                        } else {
+                            const scoreUpdatedNotice = gameState.scoresUpdated === true
+                                ? (
+                                    <Notice
+                                        text="Score updated"
+                                        type="info"
+                                        children={<></>}
+                                    />
+                                )
+                                : (<></>);
+
+                            return (
+                                <div className="text-center">
+                                    {notice}
+                                    {scoreUpdatedNotice}
+                                    <div className="mt-4">
+                                        <GuessViewer
+                                            title="Solution:"
+                                            guess={gameState.solution.code}
+                                        />
+                                    </div>
+                                    <div className="row">
+                                        <div className="col">
+                                            <Button
+                                                text="Dispute"
+                                                danger={true}
+                                                disabled={disputeBtnDisabled}
+                                                onclick={onDisputeClick}
+                                            />
+                                        </div>
+                                        <div className="col">
+                                            <Button
+                                                text="Continue"
+                                                danger={false}
+                                                disabled={false}
+                                                onclick={onContinueBtnClick}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+                    }
+                default:
+                    // should not happen
+                    return <></>;
             }
         };
+
+        const checkableGuessHistory = gameState.phase === GamePhase.END_ROUND
+            && gameState.solution !== undefined
+            && gameState.role === "breaker";
 
         const guessHistory = gameState.guessHistory.length == 0 ? <></> :
             <GuessHistory
                 guesses={gameState.guessHistory}
-                guessTotal={N_GUESSES.toString()} />;
+                guessTotal={N_GUESSES.toString()}
+                checkable={checkableGuessHistory}
+                onClick={onGuessDisputeBtnClick}
+            />;
 
         const solutionRemainder = gameState.role === "maker"
             && gameState.solution !== undefined

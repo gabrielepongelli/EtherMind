@@ -9,9 +9,11 @@ import { Code, Feedback } from "../utils/generalTypes";
 interface GuessHistoryProps {
     guesses: Pair<Code, Feedback>[] // the history of guesses
     guessTotal: string // the total number of guesses
+    checkable: boolean // whether each element should be checkable or not
+    onClick?: (idx: number, checked: boolean) => void
 }
 
-export const GuessHistory: React.FC<GuessHistoryProps> = ({ guesses, guessTotal }) => {
+export const GuessHistory: React.FC<GuessHistoryProps> = ({ guesses, guessTotal, checkable, onClick }) => {
     const feedbackRecord = (feedback: Feedback) => {
         return (
             <div>
@@ -33,10 +35,42 @@ export const GuessHistory: React.FC<GuessHistoryProps> = ({ guesses, guessTotal 
     }
 
     const historyElement = (idx: number, guess: Pair<Code, Feedback>) => {
+        const btnAddTest = "Add";
+        const btnAddedText = "Added";
+
+        const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const checked = e.target.checked;
+            e.target.labels?.forEach((label) => {
+                if (checked) {
+                    label.textContent = btnAddedText;
+                } else {
+                    label.textContent = btnAddTest;
+                }
+            });
+
+            if (onClick === undefined) {
+                return;
+            } else {
+                onClick(
+                    Number(e.target.id.substring("guessCheck".length)) - 1,
+                    checked);
+            }
+        }
+
+        const checkBtn = checkable
+            ? (
+                <div className="col">
+                    <input type="checkbox" className="btn-check" id={`guessCheck${idx}`} autoComplete="off" onChange={onChange}></input>
+                    <label className="btn btn-outline-secondary" htmlFor={`guessCheck${idx}`}>{btnAddTest}</label>
+                </div>
+            )
+            : (<></>);
+
         return (
             <div className="accordion-item" key={idx}>
                 <h2 className="accordion-header">
                     <button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target={"#guess" + idx.toString()} aria-expanded="false" aria-controls={"guess" + idx.toString()}>
+                        {checkBtn}
                         <div className="container-fluid text-center">
                             {"Guess " + idx.toString() + " of " + guessTotal}
                         </div>

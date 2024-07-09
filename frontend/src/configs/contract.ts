@@ -9,7 +9,7 @@ const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 // this is if you need to pay
 const privateKey: string = import.meta.env.VITE_PRIVATE_KEY;
 
-let provider: ethers.JsonRpcProvider;
+export let provider: ethers.JsonRpcProvider;
 
 if (!import.meta.env.VITE_LOCAL_NODE) {
     // connect to Ethereum using Infura

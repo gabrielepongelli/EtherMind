@@ -9,10 +9,15 @@ export const initialMatchState: MatchState = {
     opponent: undefined,
     proposed: false,
     payed: false,
-    error: undefined
+    error: undefined,
+    yourFinalScore: undefined,
+    opponentFinalScore: undefined,
+    endMsg: undefined,
+    punished: undefined
 };
 
 export type MatchStateAction =
+    | { type: "reset" }
     | { type: "creating" }
     | { type: "created", waiting: true }
     | { type: "created", waiting: false, matchId: string }
@@ -25,10 +30,14 @@ export type MatchStateAction =
     | { type: "stake payed", waiting: true }
     | { type: "stake payed", waiting: false }
     | { type: "game started" }
+    | { type: "game ended", reason: "dispute", punished: boolean, msg: string }
+    | { type: "game ended", reason: "game finished", yourScore: number, opponentScore: number }
     | { type: "error", msg: string }
 
 export const matchStateReducer = (state: MatchState, action: MatchStateAction): MatchState => {
     switch (action.type) {
+        case "reset":
+            return initialMatchState;
         case "creating":
             return {
                 ...state,
@@ -103,6 +112,22 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
             };
         case "game started":
             return { ...state, phase: MatchPhase.GAME_STARTED, error: undefined };
+        case "game ended":
+            if (action.reason == "dispute") {
+                return {
+                    ...state,
+                    phase: MatchPhase.GAME_ENDED,
+                    endMsg: action.msg,
+                    punished: action.punished
+                };
+            } else if (action.reason == "game finished") {
+                return {
+                    ...state,
+                    phase: MatchPhase.GAME_ENDED,
+                    yourFinalScore: action.yourScore,
+                    opponentFinalScore: action.opponentScore
+                }
+            }
         case "error":
             return { ...state, waiting: false, error: action.msg }
     }

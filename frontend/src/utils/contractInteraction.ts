@@ -233,7 +233,7 @@ export const uploadFeedback = async (matchID: string, feedback: Feedback) => {
     }
 }
 
-export const sendSolution = async (matchID: string, solution: Solution) => {
+export const uploadSolution = async (matchID: string, solution: Solution) => {
     try {
         const tx = await contract.uploadSolution(matchID, encodeCode(solution.code), prepareSalt(solution.salt));
         console.log('Transaction:', tx);
@@ -245,9 +245,9 @@ export const sendSolution = async (matchID: string, solution: Solution) => {
     }
 }
 
-export const sendDispute = async (matchID: string) => {
+export const sendDispute = async (matchID: string, indexes: number[]) => {
     try {
-        const tx = await contract.dispute(matchID);
+        const tx = await contract.dispute(matchID, indexes);
         console.log('Transaction:', tx);
         return { success: true, tx };
     } catch (error) {

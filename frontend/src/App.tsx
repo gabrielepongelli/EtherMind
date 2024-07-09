@@ -6,18 +6,15 @@ import { JoinMatchView } from './component/views/JoinMatchView';
 import { StakeDecisionView } from './component/views/StakeDecisionView';
 import { StakePaymentView } from './component/views/StakePaymentView';
 import { PlayView } from './component/views/PlayView';
+import { EndView } from './component/views/EndView';
 
 import { MatchStateContext, MatchStateSetContext } from './contexts/MatchStateContext';
 import { initialMatchState, matchStateReducer } from './reducers/MatchStateReducer';
-
-import { GameStateContext, GameStateSetContext } from './contexts/GameStateContext';
-import { initialGameState, gameStateReducer } from './reducers/GameStateReducer';
 
 import { MatchPhase } from './utils/generalTypes';
 
 const App: React.FC = () => {
     const [matchState, dispatchMatchState] = useReducer(matchStateReducer, initialMatchState)
-    const [gameState, dispatchGameState] = useReducer(gameStateReducer, initialGameState)
 
     switch (matchState.phase) {
         case MatchPhase.START:
@@ -65,11 +62,15 @@ const App: React.FC = () => {
             return (
                 <MatchStateContext.Provider value={matchState}>
                     <MatchStateSetContext.Provider value={dispatchMatchState}>
-                        <GameStateContext.Provider value={gameState}>
-                            <GameStateSetContext.Provider value={dispatchGameState}>
-                                <PlayView />
-                            </GameStateSetContext.Provider>
-                        </GameStateContext.Provider>
+                        <PlayView />
+                    </MatchStateSetContext.Provider>
+                </MatchStateContext.Provider>
+            );
+        case MatchPhase.GAME_ENDED:
+            return (
+                <MatchStateContext.Provider value={matchState}>
+                    <MatchStateSetContext.Provider value={dispatchMatchState}>
+                        <EndView />
                     </MatchStateSetContext.Provider>
                 </MatchStateContext.Provider>
             );
