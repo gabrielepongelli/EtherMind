@@ -24,7 +24,7 @@ export const GuessHistory: React.FC<GuessHistoryProps> = ({ guesses, guessTotal 
                     </div>
                     <div className="col">
                         <DataInfo
-                            text={"Wrong Positions: " + feedback.correctPos}
+                            text={"Wrong Positions: " + feedback.wrongPos}
                         />
                     </div>
                 </div>
