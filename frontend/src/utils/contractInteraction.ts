@@ -212,9 +212,9 @@ export const uploadGuess = async (matchID: string, guess: Code) => {
 export const uploadFeedback = async (matchID: string, feedback: Feedback) => {
     try {
         if
-            (feedback.wrongPos >= N_COLORS_PER_GUESS ||
-            feedback.correctPos >= N_COLORS_PER_GUESS ||
-            feedback.correctPos + feedback.wrongPos >= N_COLORS_PER_GUESS) {
+            (feedback.wrongPos > N_COLORS_PER_GUESS ||
+            feedback.correctPos > N_COLORS_PER_GUESS ||
+            feedback.correctPos + feedback.wrongPos > N_COLORS_PER_GUESS) {
             throw SyntaxError();
         }
 
