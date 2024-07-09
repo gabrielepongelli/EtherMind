@@ -325,7 +325,7 @@ describe("Gameplay", function () {
                 const feedback = newFeedback(0, 3);
 
                 const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
-                const eventInterface = new ethers.Interface(["event RoundEnded(address indexed id, uint round)"]);
+                const eventInterface = new ethers.Interface(["event RoundEnded(address indexed id, uint indexed round)"]);
                 const event = await getEvent(tx, eventInterface, "RoundEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);
@@ -344,7 +344,7 @@ describe("Gameplay", function () {
                 const feedback = newFeedback(4, 0);
 
                 const tx = await game.connect(codeMaker).newFeedback(matchId, feedback);
-                const eventInterface = new ethers.Interface(["event RoundEnded(address indexed id, uint round)"]);
+                const eventInterface = new ethers.Interface(["event RoundEnded(address indexed id, uint indexed round)"]);
                 const event = await getEvent(tx, eventInterface, "RoundEnded", 1);
 
                 expect(event.id).to.be.equal(matchId);

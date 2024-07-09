@@ -121,7 +121,7 @@ contract EtherMind {
         address from,
         Feedback feedback
     );
-    event RoundEnded(address indexed id, uint round);
+    event RoundEnded(address indexed id, uint indexed round);
     event SolutionSubmitted(address indexed id, address from, Code solution);
     event ScoresUpdated(
         address indexed id,
