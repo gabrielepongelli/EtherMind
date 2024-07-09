@@ -36,8 +36,10 @@ export const GuessHistory: React.FC<GuessHistoryProps> = ({ guesses, guessTotal 
         return (
             <div className="accordion-item" key={idx}>
                 <h2 className="accordion-header">
-                    <button className="accordion-button collapsed text-center" type="button" data-bs-toggle="collapse" data-bs-target={"#guess" + idx.toString()} aria-expanded="false" aria-controls={"guess" + idx.toString()}>
-                        {"Guess " + idx.toString() + " of " + guessTotal}
+                    <button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target={"#guess" + idx.toString()} aria-expanded="false" aria-controls={"guess" + idx.toString()}>
+                        <div className="container-fluid text-center">
+                            {"Guess " + idx.toString() + " of " + guessTotal}
+                        </div>
                     </button>
                 </h2>
                 <div id={"guess" + idx.toString()} className="accordion-collapse collapse" data-bs-parent="#guessHistory">
