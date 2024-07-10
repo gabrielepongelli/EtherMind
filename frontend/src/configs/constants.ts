@@ -16,3 +16,5 @@ export const N_ROUNDS = 4;
 export const N_GUESSES = 12;
 
 export const N_COLORS_PER_GUESS = 4;
+
+export const AFK_TIMEOUT = 180;

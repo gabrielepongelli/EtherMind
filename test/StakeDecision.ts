@@ -34,7 +34,7 @@ describe("Stake decision", function () {
                 const { game } = await loadFixture(phases.untilJoin);
                 const invalidMatchId = ethers.ZeroAddress;
 
-                await expect(game.stakeProposal(invalidMatchId, 10)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.stakeProposal(invalidMatchId, 10)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -45,15 +45,15 @@ describe("Stake decision", function () {
 
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).stakeProposal(matchId, 10)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
                 const { game, matchId, otherPlayer } = await loadFixture(phases.untilJoin);
 
-                await expect(game.connect(otherPlayer).stakeProposal(matchId, 10)).to.be.revertedWith("You are not part of the match specified");
+                await expect(game.connect(otherPlayer).stakeProposal(matchId, 10)).to.be.revertedWith("You are not part of the match specified.");
             });
 
             it("Should not fail if called with the same stake proposal value", async function () {
@@ -85,8 +85,8 @@ describe("Stake decision", function () {
 
                 await expect(game.stakeProposal(matchId, stakeProposal)).not.to.be.reverted;
 
-                await expect(game.stakeProposal(matchId, stakeProposal)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                await expect(game.connect(challenger).stakeProposal(matchId, stakeProposal)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.stakeProposal(matchId, stakeProposal)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                await expect(game.connect(challenger).stakeProposal(matchId, stakeProposal)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
         });
 

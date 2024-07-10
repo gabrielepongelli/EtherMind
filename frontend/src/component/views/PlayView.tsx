@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useReducer } from "react";
 
+import { Alert } from "../Alert";
 import { TitleBox } from "../TitleBox";
 import { Notice } from "../Notice";
 import { DataInfo } from "../DataInfo";
 import { Button } from "../Button";
+import { AfkButton } from "../AfkButton";
 import { ActionBox } from "../ActionBox";
 import { Spinner } from "../Spinner";
 import { GuessViewer } from "../GuessViewer";
@@ -13,7 +15,7 @@ import { CodeSubmitForm } from "../CodeSubmitForm";
 import { FeedbackSubmitForm } from "../FeedbackSubmitForm";
 
 import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchStateContext";
-import { GameStateAction, gameStateReducer, initialGameState } from "../../reducers/GameStateReducer";
+import { gameStateReducer, initialGameState } from "../../reducers/GameStateReducer";
 
 import { contract, wallet } from "../../configs/contract";
 import { uploadHash, uploadGuess, uploadFeedback, uploadSolution, decodeCode, decodeFeedback, sendDispute, checkWhoWinner } from "../../utils/contractInteraction";
@@ -24,7 +26,6 @@ import { GamePhase, Solution, Code, Feedback } from "../../utils/generalTypes";
 import { getRandomInt } from "../../utils/utils";
 
 import { N_ROUNDS, N_GUESSES, N_COLORS_PER_GUESS } from "../../configs/constants";
-import { MatchStateAction } from "../../reducers/MatchStateReducer";
 
 export const PlayView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -34,32 +35,44 @@ export const PlayView: React.FC = () => {
     useEffect(() => {
         if (gameState.phase === undefined) {
             const filter = contract.filters.RoundStarted(matchState.matchID, 1, null, null);
-            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
+            setListener(filter, (args) => {
                 if (args[2] === wallet.address) {
-                    return { type: "round started", role: "maker", round: Number(args[1]) };
+                    dispatchGameState({
+                        type: "round started",
+                        role: "maker",
+                        round: Number(args[1])
+                    });
                 } else {
-                    return { type: "round started", role: "breaker", round: Number(args[1]) };
+                    dispatchGameState({
+                        type: "round started",
+                        role: "breaker",
+                        round: Number(args[1])
+                    });
                 }
             });
         } else if ((gameState.phase === GamePhase.CODE_SUBMISSION && gameState.role === 'maker')
             || (gameState.phase === GamePhase.WAITING_OPPONENT && gameState.role === "breaker" && gameState.lastGuess === undefined)) {
 
             const filter = contract.filters.SolutionHashSubmitted(matchState.matchID, null);
-            setListener<GameStateAction>(filter, dispatchGameState, () => {
-                return { type: "new solution", waiting: false };
+            setListener(filter, () => {
+                dispatchMatchState({ type: "afk reset" });
+                dispatchGameState({ type: "new solution", waiting: false });
             });
         } else if ((gameState.phase === GamePhase.CODE_SUBMISSION && gameState.role === 'breaker')
             || (gameState.phase === GamePhase.WAITING_OPPONENT && gameState.role === "maker")) {
 
-            setListener<GameStateAction>(
-                contract.filters.GuessSubmitted(matchState.matchID, null, null),
-                dispatchGameState, (args) => {
-                    return { type: "new guess", waiting: false, guess: decodeCode(Number(args[2])) };
+            setListener(
+                contract.filters.GuessSubmitted(matchState.matchID, null, null), (args) => {
+                    dispatchMatchState({ type: "afk reset" });
+                    dispatchGameState({
+                        type: "new guess",
+                        waiting: false,
+                        guess: decodeCode(Number(args[2]))
+                    });
                 });
 
-            setListener<GameStateAction>(
-                contract.filters.RoundEnded(matchState.matchID, gameState.round as number),
-                dispatchGameState, () => {
+            setListener(
+                contract.filters.RoundEnded(matchState.matchID, gameState.round as number), () => {
                     if (gameState.role === "maker") {
                         uploadSolution(matchState.matchID as string, gameState.solution as Solution).then((result) => {
                             if (!result.success) {
@@ -68,29 +81,35 @@ export const PlayView: React.FC = () => {
                         });
                     }
 
-                    return { type: "round ended" };
+                    dispatchGameState({ type: "round ended" });
                 });
         } else if ((gameState.phase === GamePhase.FEEDBACK_SUBMISSION && gameState.role === 'maker')
             || (gameState.phase === GamePhase.WAITING_OPPONENT && gameState.role === "breaker" && gameState.lastGuess !== undefined)) {
 
             const filter = contract.filters.FeedbackSubmitted(matchState.matchID, null, null);
-            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
-                return { type: "new feedback", waiting: false, fb: decodeFeedback(Number(args[2])) };
+            setListener(filter, (args) => {
+                dispatchMatchState({ type: "afk reset" });
+                dispatchGameState({
+                    type: "new feedback",
+                    waiting: false,
+                    fb: decodeFeedback(Number(args[2]))
+                });
             });
         } else if (gameState.phase === GamePhase.END_ROUND && !gameState.roundEnded) {
             const filter = contract.filters.SolutionSubmitted(matchState.matchID, null, null);
-            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
-                return {
+            setListener(filter, (args) => {
+                dispatchMatchState({ type: "afk reset" });
+                dispatchGameState({
                     type: "final solution submitted",
                     solution: {
                         code: decodeCode(Number(args[2])),
                         salt: 0
                     }
-                };
+                });
             });
         } else if (gameState.phase === GamePhase.END_ROUND && gameState.roundEnded && !gameState.scoresUpdated) {
             const filter = contract.filters.ScoresUpdated(matchState.matchID, null, null);
-            setListener<GameStateAction>(filter, dispatchGameState, (args) => {
+            setListener(filter, (args) => {
                 let updatedScore = 0;
                 if (matchState.randomJoin === undefined) {
                     // I am the creator
@@ -108,24 +127,33 @@ export const PlayView: React.FC = () => {
                     }
                 }
 
-                return {
+                dispatchGameState({
                     type: "scores updated",
                     waiting: false,
                     score: updatedScore
-                };
+                });
             });
         }
 
-        setListener<MatchStateAction>(
-            contract.filters.PlayerPunished(matchState.matchID, null, null),
-            dispatchMatchState, (args) => {
-                return {
+        setListener(
+            contract.filters.PlayerPunished(matchState.matchID, null, null), (args) => {
+                dispatchMatchState({
                     type: "game ended",
-                    reason: "dispute",
+                    genuine: false,
                     punished: args[1] as string === wallet.address,
                     msg: args[2] as string
-                };
+                });
             });
+
+        if (matchState.afkAlertShowed === undefined) {
+            const filter = contract.filters.AfkCheckStarted(matchState.matchID, null, null);
+            setListener(filter, (args) => {
+                dispatchMatchState({
+                    type: "afk started",
+                    move: args[1] != wallet.address
+                });
+            });
+        }
 
         return removeAllListeners;
     }, [gameState]);
@@ -178,7 +206,7 @@ export const PlayView: React.FC = () => {
             checkWhoWinner(matchState.matchID as string)
                 .then((result) => {
                     if (!result.success
-                        && result.error !== "The match specified does not exist") {
+                        && result.error !== "The match specified does not exist.") {
                         dispatchGameState({
                             type: 'error',
                             msg: result.error as string
@@ -186,7 +214,7 @@ export const PlayView: React.FC = () => {
                     } else {
                         dispatchMatchState({
                             type: "game ended",
-                            reason: "game finished",
+                            genuine: true,
                             yourScore: gameState.yourScore,
                             opponentScore: gameState.opponentScore
                         });
@@ -194,14 +222,20 @@ export const PlayView: React.FC = () => {
                 });
             dispatchGameState({ type: "scores updated", waiting: true });
         } else {
-            console.log("ROUND: ", gameState.round);
             const filter = contract.filters.RoundStarted(matchState.matchID, gameState.round as number + 1, null, null);
-            searchEvent<GameStateAction>(filter, dispatchGameState, (args) => {
-                console.log("found");
+            searchEvent(filter, (args) => {
                 if (args[2] === wallet.address) {
-                    return { type: "round started", role: "maker", round: Number(args[1]) };
+                    dispatchGameState({
+                        type: "round started",
+                        role: "maker",
+                        round: Number(args[1])
+                    });
                 } else {
-                    return { type: "round started", role: "breaker", round: Number(args[1]) };
+                    dispatchGameState({
+                        type: "round started",
+                        role: "breaker",
+                        round: Number(args[1])
+                    });
                 }
             });
         }
@@ -229,6 +263,18 @@ export const PlayView: React.FC = () => {
         dispatchGameState({ type: "dispute started" });
     }
 
+    const onAfkFail = (err: string) => {
+        dispatchGameState({ type: 'error', msg: err });
+    }
+
+    const onAfkHalt = () => {
+        dispatchGameState({ type: "end wait" });
+    }
+
+    const onAfkAlertClose = () => {
+        dispatchMatchState({ type: "afk continue" });
+    }
+
     const infoBar = (
         <div>
             <div className="row">
@@ -247,11 +293,12 @@ export const PlayView: React.FC = () => {
                     <DataInfo text={"Your Score: " + gameState.yourScore.toString()} />
                 </div>
                 <div className="col">
-                    <Button
-                        text="Check AFK"
-                        danger={true}
-                        onclick={() => { }}
-                        disabled={false}
+                    <AfkButton
+                        disabled={gameState.phase === undefined}
+                        phase={gameState.phase}
+                        onStartFailed={onAfkFail}
+                        onTerminateFailed={onAfkFail}
+                        onTerminateSuccess={onAfkHalt}
                     />
                 </div>
                 <div className="col">
@@ -261,12 +308,26 @@ export const PlayView: React.FC = () => {
         </div>
     );
 
+    const afkAlert = matchState.afkAlertShowed === false
+        ? (
+            <Alert
+                title="AFK Check"
+                type="danger"
+                closeBtnText="Close"
+                onClose={onAfkAlertClose}
+            >
+                <p className="text-center">Your opponent started an AFK Check on you. Make a move!</p>
+            </Alert>
+        )
+        : (<></>);
+
     if (gameState.phase === undefined) {
         return (
             <TitleBox>
                 <div>
                     {infoBar}
                     {errorMsg}
+                    {afkAlert}
                     <Spinner />
                 </div>
             </TitleBox>
@@ -462,6 +523,7 @@ export const PlayView: React.FC = () => {
                 <div>
                     {infoBar}
                     {errorMsg}
+                    {afkAlert}
                     {solutionRemainder}
                     <ActionBox
                         role={gameState.role as string}

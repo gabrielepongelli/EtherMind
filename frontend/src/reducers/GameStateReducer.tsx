@@ -33,6 +33,7 @@ export type GameStateAction =
     | { type: "dispute guess added", idx: number }
     | { type: "dispute guess removed", idx: number }
     | { type: "dispute started" }
+    | { type: "end wait" }
     | { type: "error", msg: string }
 
 export const gameStateReducer = (state: GameState, action: GameStateAction): GameState => {
@@ -220,6 +221,8 @@ export const gameStateReducer = (state: GameState, action: GameStateAction): Gam
                 phase: GamePhase.DISPUTE,
                 waiting: true
             };
+        case "end wait":
+            return { ...state, phase: undefined };
         case "error":
             const phase = state.phase === GamePhase.DISPUTE ? GamePhase.END_ROUND : state.phase;
 

@@ -12,7 +12,6 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { createMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
 import { setListener, removeAllListeners } from '../../utils/utils';
-import { MatchStateAction } from '../../reducers/MatchStateReducer';
 
 export const CreateMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -25,8 +24,12 @@ export const CreateMatchView: React.FC = () => {
 
     useEffect(() => {
         const filter = contract.filters.MatchCreated(null, wallet.address);
-        setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
-            return { type: 'created', waiting: false, matchId: args[0] };
+        setListener(filter, (args) => {
+            dispatchMatchState({
+                type: 'created',
+                waiting: false,
+                matchId: args[0]
+            });
         });
 
         return removeAllListeners;
@@ -34,8 +37,13 @@ export const CreateMatchView: React.FC = () => {
 
     useEffect(() => {
         const filter = contract.filters.MatchStarted(matchState.matchID);
-        setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
-            return { type: 'started', matchId: args[0], opponent: args[2], joiner: false };
+        setListener(filter, (args) => {
+            dispatchMatchState({
+                type: 'started',
+                matchId: args[0],
+                opponent: args[2],
+                joiner: false
+            });
         });
 
         return removeAllListeners;

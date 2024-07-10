@@ -40,7 +40,7 @@ describe("AFK handling", function () {
                 const { game, codeBreaker } = await loadFixture(phases.untilFirstRoundSolution);
                 const invalidMatchId = ethers.ZeroAddress;
 
-                await expect(game.connect(codeBreaker).startAfkCheck(invalidMatchId)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeBreaker).startAfkCheck(invalidMatchId)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -53,15 +53,15 @@ describe("AFK handling", function () {
                 for (const phaseFn of Object.values(phasesToBeChecked)) {
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
                 const { game, matchId, otherPlayer } = await loadFixture(phases.untilFirstRoundSolution);
 
-                await expect(game.connect(otherPlayer).startAfkCheck(matchId)).to.be.revertedWith("You are not part of the match specified");
+                await expect(game.connect(otherPlayer).startAfkCheck(matchId)).to.be.revertedWith("You are not part of the match specified.");
             });
 
             it("Should fail if called by the player that should make the move", async function () {
@@ -70,25 +70,25 @@ describe("AFK handling", function () {
                     const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
                     await game.payStake(matchId, { value: finalStake });
 
-                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an afk check");
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an AFK Check.");
                 }
                 {
                     const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
                     await game.connect(challenger).payStake(matchId, { value: finalStake });
 
-                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an afk check");
+                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an AFK Check.");
                 }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeMaker } = await loadFixture(phaseFn);
 
-                    await expect(game.connect(codeMaker).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an afk check");
+                    await expect(game.connect(codeMaker).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an AFK Check.");
                 }
 
                 for (const phaseFn of Object.values(codeBreakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
-                    await expect(game.connect(codeBreaker).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an afk check");
+                    await expect(game.connect(codeBreaker).startAfkCheck(matchId)).to.be.revertedWith("You can't ask for an AFK Check.");
                 }
             });
 
@@ -127,28 +127,28 @@ describe("AFK handling", function () {
                     await game.payStake(matchId, { value: finalStake });
 
                     await game.startAfkCheck(matchId);
-                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("AFK check already started");
+                    await expect(game.startAfkCheck(matchId)).to.be.revertedWith("AFK Check already started.");
                 }
                 {
                     const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
                     await game.connect(challenger).payStake(matchId, { value: finalStake });
 
                     await game.connect(challenger).startAfkCheck(matchId);
-                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("AFK check already started");
+                    await expect(game.connect(challenger).startAfkCheck(matchId)).to.be.revertedWith("AFK Check already started.");
                 }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
                     await game.connect(codeBreaker).startAfkCheck(matchId);
-                    await expect(game.connect(codeBreaker).startAfkCheck(matchId)).to.be.revertedWith("AFK check already started");
+                    await expect(game.connect(codeBreaker).startAfkCheck(matchId)).to.be.revertedWith("AFK Check already started.");
                 }
 
                 for (const phaseFn of Object.values(codeBreakerShouldMove)) {
                     const { game, matchId, codeMaker } = await loadFixture(phaseFn);
 
                     await game.connect(codeMaker).startAfkCheck(matchId);
-                    await expect(game.connect(codeMaker).startAfkCheck(matchId)).to.be.revertedWith("AFK check already started");
+                    await expect(game.connect(codeMaker).startAfkCheck(matchId)).to.be.revertedWith("AFK Check already started.");
                 }
             });
         });
@@ -242,7 +242,7 @@ describe("AFK handling", function () {
                 const { game, codeBreaker } = await loadFixture(phases.untilFirstRoundSolution);
                 const invalidMatchId = ethers.ZeroAddress;
 
-                await expect(game.connect(codeBreaker).stopMatchForAfk(invalidMatchId)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeBreaker).stopMatchForAfk(invalidMatchId)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -255,22 +255,22 @@ describe("AFK handling", function () {
                 for (const phaseFn of Object.values(phasesToBeChecked)) {
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).stopMatchForAfk(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).stopMatchForAfk(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
                 const { game, matchId, otherPlayer } = await loadFixture(phases.untilFirstRoundSolution);
 
-                await expect(game.connect(otherPlayer).stopMatchForAfk(matchId)).to.be.revertedWith("You are not part of the match specified");
+                await expect(game.connect(otherPlayer).stopMatchForAfk(matchId)).to.be.revertedWith("You are not part of the match specified.");
             });
 
             it("Should fail if called before starting the AFK timer", async function () {
                 for (const phaseFn of Object.values(codeMakerShouldMove.concat(codeBreakerShouldMove).concat([phases.untilStakeDecision]))) {
                     const { game, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("No AFK check was started");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("No AFK Check was started.");
                 }
             });
 
@@ -281,28 +281,28 @@ describe("AFK handling", function () {
                     await game.payStake(matchId, { value: finalStake });
 
                     await game.startAfkCheck(matchId);
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Too early to end the match for AFK");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("It's too early to end the match for AFK.");
                 }
                 {
                     const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
                     await game.connect(challenger).payStake(matchId, { value: finalStake });
 
                     await game.connect(challenger).startAfkCheck(matchId);
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Too early to end the match for AFK");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("It's too early to end the match for AFK.");
                 }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
                     const { game, matchId, codeBreaker } = await loadFixture(phaseFn);
 
                     await game.connect(codeBreaker).startAfkCheck(matchId);
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Too early to end the match for AFK");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("It's too early to end the match for AFK.");
                 }
 
                 for (const phaseFn of Object.values(codeBreakerShouldMove)) {
                     const { game, matchId, codeMaker } = await loadFixture(phaseFn);
 
                     await game.connect(codeMaker).startAfkCheck(matchId);
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("Too early to end the match for AFK");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("It's too early to end the match for AFK.");
                 }
             });
 
@@ -454,7 +454,7 @@ describe("AFK handling", function () {
 
                     // in this case if the error is that the match specified 
                     // doesn't exist it means that the match has been deleted
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist.");
                 }
                 {
                     const { game, matchId, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
@@ -470,7 +470,7 @@ describe("AFK handling", function () {
 
                     // in this case if the error is that the match specified 
                     // doesn't exist it means that the match has been deleted
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist.");
                 }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
@@ -486,7 +486,7 @@ describe("AFK handling", function () {
 
                     // in this case if the error is that the match specified 
                     // doesn't exist it means that the match has been deleted
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist.");
                 }
 
                 for (const phaseFn of Object.values(codeBreakerShouldMove)) {
@@ -502,7 +502,7 @@ describe("AFK handling", function () {
 
                     // in this case if the error is that the match specified 
                     // doesn't exist it means that the match has been deleted
-                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist");
+                    await expect(game.stopMatchForAfk(matchId)).to.be.revertedWith("The match specified does not exist.");
                 }
             });
         });
@@ -710,7 +710,7 @@ describe("AFK handling", function () {
 
                     expect(event.id).to.be.equal(matchId);
                     expect(event.player).to.be.equal(challenger.address);
-                    expect(event.reason).to.be.equal("Player is AFK");
+                    expect(event.reason).to.be.equal("Player is AFK.");
                 }
                 {
                     const { game, matchId, creator, challenger, finalStake } = await loadFixture(phases.untilStakeDecision);
@@ -728,7 +728,7 @@ describe("AFK handling", function () {
 
                     expect(event.id).to.be.equal(matchId);
                     expect(event.player).to.be.equal(creator.address);
-                    expect(event.reason).to.be.equal("Player is AFK");
+                    expect(event.reason).to.be.equal("Player is AFK.");
                 }
 
                 for (const phaseFn of Object.values(codeMakerShouldMove)) {
@@ -746,7 +746,7 @@ describe("AFK handling", function () {
 
                     expect(event.id).to.be.equal(matchId);
                     expect(event.player).to.be.equal(codeMaker.address);
-                    expect(event.reason).to.be.equal("Player is AFK");
+                    expect(event.reason).to.be.equal("Player is AFK.");
                 }
 
                 for (const phaseFn of Object.values(codeBreakerShouldMove)) {
@@ -764,7 +764,7 @@ describe("AFK handling", function () {
 
                     expect(event.id).to.be.equal(matchId);
                     expect(event.player).to.be.equal(codeBreaker.address);
-                    expect(event.reason).to.be.equal("Player is AFK");
+                    expect(event.reason).to.be.equal("Player is AFK.");
                 }
             });
         });

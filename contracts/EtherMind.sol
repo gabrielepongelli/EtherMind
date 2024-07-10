@@ -20,7 +20,7 @@ contract EtherMind {
      * @param id The id of the match to check.
      */
     modifier onlyExistingIds(address id) {
-        require(matchReg.isValid(id), "The match specified does not exist");
+        require(matchReg.isValid(id), "The match specified does not exist.");
         _;
     }
 
@@ -29,7 +29,7 @@ contract EtherMind {
      * @param id The id of the match to check.
      */
     modifier onlyExistingIdsOrZero(address id) {
-        require(id == address(0) || matchReg.isValid(id), "Invalid match id");
+        require(id == address(0) || matchReg.isValid(id), "Invalid match id.");
         _;
     }
 
@@ -42,7 +42,7 @@ contract EtherMind {
         require(
             msg.sender == matchReg.getMatch(id).creator ||
                 msg.sender == matchReg.getMatch(id).challenger,
-            "You are not part of the match specified"
+            "You are not part of the match specified."
         );
         _;
     }
@@ -57,7 +57,7 @@ contract EtherMind {
     modifier onlyGamesInPhase(address id, Phase phase) {
         require(
             matchReg.getMatch(id).phase == phase,
-            "Operation not permitted in this phase of the game"
+            "Operation not permitted in this phase of the game."
         );
         _;
     }
@@ -71,7 +71,7 @@ contract EtherMind {
         Game storage game = matchReg.getMatch(id);
         require(
             game.isCodeMaker(msg.sender),
-            "The caller is not the CodeMaker"
+            "The caller is not the CodeMaker."
         );
         _;
     }
@@ -85,7 +85,7 @@ contract EtherMind {
         Game storage game = matchReg.getMatch(id);
         require(
             game.isCodeBreaker(msg.sender),
-            "The caller is not the CodeBreaker"
+            "The caller is not the CodeBreaker."
         );
         _;
     }
@@ -150,7 +150,7 @@ contract EtherMind {
         // it should pass, it's just to make sure
         require(
             address(this).balance >= totalStake,
-            "Insufficient balance in contract"
+            "Insufficient balance in contract."
         );
 
         address payable playerToPay = payable(
@@ -171,13 +171,13 @@ contract EtherMind {
     function createMatch(address otherPlayer) external {
         require(
             msg.sender != otherPlayer,
-            "You cannot create a private match with yourself"
+            "You cannot create a private match with yourself."
         );
 
         address newId = address(uint160(Utils.rand(1)));
 
         bool res = matchReg.addMatch(newId, msg.sender, otherPlayer);
-        require(res, "An error occurred while creating the new match");
+        require(res, "An error occurred while creating the new match.");
 
         emit MatchCreated(newId, msg.sender);
     }
@@ -197,7 +197,7 @@ contract EtherMind {
             // randomly extract match
 
             uint nPendingMatches = matchReg.nPendingMatches();
-            require(nPendingMatches > 0, "There are no available matches");
+            require(nPendingMatches > 0, "There are no available matches.");
 
             uint rand = Utils.rand(1) % nPendingMatches;
             uint pos = rand;
@@ -208,7 +208,7 @@ contract EtherMind {
 
             require(
                 msg.sender != game.creator,
-                "There are no available matches"
+                "There are no available matches."
             );
         } else {
             // specific game chosen
@@ -217,17 +217,17 @@ contract EtherMind {
 
             require(
                 game.phase == PENDING,
-                "The match specified is already started or do not exists"
+                "The match specified is already started or does not exists."
             );
 
             require(
                 msg.sender != game.creator,
-                "You cannot join your own game"
+                "You cannot join your own game."
             );
 
             require(
                 (game.flags != IS_PRIVATE) || (game.challenger == msg.sender),
-                "You are not allowed to join this match"
+                "You are not allowed to join this match."
             );
         }
 
@@ -281,8 +281,8 @@ contract EtherMind {
     {
         Game storage game = matchReg.getMatch(id);
 
-        require(game.stake == msg.value, "Wrong stake value");
-        require(!game.hasAlreadyPayed(msg.sender), "You have already payed");
+        require(game.stake == msg.value, "Wrong stake value.");
+        require(!game.hasAlreadyPayed(msg.sender), "You have already payed.");
 
         bool hasAllPayed = game.newPayment(msg.sender);
         emit StakePayed(id, msg.sender);
@@ -333,7 +333,7 @@ contract EtherMind {
         onlyGamesInPhase(id, GUESS_SUBMISSION)
         onlyCodeBreaker(id)
     {
-        require(guess.checkFromat(), "Invalid guess format");
+        require(guess.checkFromat(), "Invalid guess format.");
 
         Game storage game = matchReg.getMatch(id);
 
@@ -358,7 +358,7 @@ contract EtherMind {
         onlyGamesInPhase(id, FEEDBACK_SUBMISSION)
         onlyCodeMaker(id)
     {
-        require(feedback.checkFromat(), "Invalid feedback format");
+        require(feedback.checkFromat(), "Invalid feedback format.");
 
         Game storage game = matchReg.getMatch(id);
 
@@ -389,7 +389,7 @@ contract EtherMind {
         onlyGamesInPhase(id, ROUND_END)
         onlyCodeMaker(id)
     {
-        require(solution.checkFromat(), "Invalid solution format");
+        require(solution.checkFromat(), "Invalid solution format.");
 
         Game storage game = matchReg.getMatch(id);
 
@@ -411,7 +411,7 @@ contract EtherMind {
             }
         } else {
             // solution dosen't match -> punish CodeMaker
-            punish(id, msg.sender, "Wrong solution provided");
+            punish(id, msg.sender, "Wrong solution provided.");
         }
     }
 
@@ -434,31 +434,31 @@ contract EtherMind {
 
         require(
             game.round > 1,
-            "Operation not permitted in this phase of the game"
+            "Operation not permitted in this phase of the game."
         );
 
         require(
             !game.isDisputeTimerEnded(block.number),
-            "The request is too late, dispute refuted"
+            "The request is too late, dispute refuted."
         );
 
         require(
             feedbackIdx.length <= Configs.N_GUESSES && feedbackIdx.length > 0,
-            "Invalid number of feedback indexes passed"
+            "Invalid number of feedback indexes passed."
         );
 
         for (uint8 i = 0; i < feedbackIdx.length; i++) {
             require(
                 feedbackIdx[i] < game.feedbacks.length,
-                "Invalid index submitted"
+                "Invalid index submitted."
             );
         }
 
         if (game.verifyFeedbacks(feedbackIdx)) {
-            punish(id, msg.sender, "Player unjustly accused the opponent");
+            punish(id, msg.sender, "Player unjustly accused the opponent.");
         } else {
             // cheating detected, punish the OLD CodeMaker (the NEW CodeBreaker)
-            punish(id, game.codeBreaker(), "Player provided false feedbacks");
+            punish(id, game.codeBreaker(), "Player provided false feedbacks.");
         }
     }
 
@@ -483,13 +483,13 @@ contract EtherMind {
     {
         Game storage game = matchReg.getMatch(id);
 
-        require(!game.isAfkTimerStarted(), "AFK check already started");
-
         // check that whoever is calling is in the position to wait the other
         require(
             game.canStartAfkTimer(msg.sender),
-            "You can't ask for an afk check"
+            "You can't ask for an AFK Check."
         );
+
+        require(!game.isAfkTimerStarted(), "AFK Check already started.");
 
         game.startAfkTimer(block.number);
         emit AfkCheckStarted(id, msg.sender, Configs.AFK_MAX);
@@ -516,16 +516,16 @@ contract EtherMind {
     {
         Game storage game = matchReg.getMatch(id);
 
-        require(game.isAfkTimerStarted(), "No AFK check was started");
+        require(game.isAfkTimerStarted(), "No AFK Check was started.");
         require(
             game.isAfkTimerEnded(block.number),
-            "Too early to end the match for AFK"
+            "It's too early to end the match for AFK."
         );
 
         if (game.isCodeMakerWaited()) {
-            punish(id, game.codeMaker(), "Player is AFK");
+            punish(id, game.codeMaker(), "Player is AFK.");
         } else if (game.isCodeBreakerWaited()) {
-            punish(id, game.codeBreaker(), "Player is AFK");
+            punish(id, game.codeBreaker(), "Player is AFK.");
         } else {
             // invalid state, return stakes and end the match
             address payable creator = payable(game.creator);
@@ -535,7 +535,7 @@ contract EtherMind {
             matchReg.deleteMatch(id);
             creator.transfer(refundAmount);
             challenger.transfer(refundAmount);
-            emit Failure(id, "Internal error");
+            emit Failure(id, "Internal error.");
             emit MatchEnded(id);
         }
     }
@@ -557,7 +557,7 @@ contract EtherMind {
         // it should pass, it's just to make sure
         require(
             address(this).balance >= game.stake,
-            "Insufficient balance in contract"
+            "Insufficient balance in contract."
         );
 
         // if this is called by the CodeMaker force him to wait for the dispute
@@ -565,7 +565,7 @@ contract EtherMind {
         require(
             game.isCodeBreaker(msg.sender) ||
                 game.isDisputeTimerEnded(block.number),
-            "You must first wait for the dispute time"
+            "You must first wait for the dispute time."
         );
 
         address payable winner = payable(game.winner());

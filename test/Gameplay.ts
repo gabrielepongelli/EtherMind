@@ -19,7 +19,7 @@ describe("Gameplay", function () {
                 const nonce = 7777;
                 const hashedSolution = hashCode(solution, nonce);
 
-                await expect(game.connect(codeMaker).newSolutionHash(invalidMatchId, hashedSolution)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeMaker).newSolutionHash(invalidMatchId, hashedSolution)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -37,8 +37,8 @@ describe("Gameplay", function () {
 
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
@@ -48,7 +48,7 @@ describe("Gameplay", function () {
                 const nonce = 7777;
                 const hashedSolution = hashCode(solution, nonce);
 
-                await expect(game.connect(otherPlayer).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("The caller is not the CodeMaker");
+                await expect(game.connect(otherPlayer).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("The caller is not the CodeMaker.");
             });
 
             it("Should fail if called from the CodeBreaker", async function () {
@@ -57,7 +57,7 @@ describe("Gameplay", function () {
                 const nonce = 7777;
                 const hashedSolution = hashCode(solution, nonce);
 
-                await expect(game.connect(codeBreaker).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("The caller is not the CodeMaker");
+                await expect(game.connect(codeBreaker).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("The caller is not the CodeMaker.");
             });
 
             it("Should fail if called more than once consecutively by the CodeMaker", async function () {
@@ -67,7 +67,7 @@ describe("Gameplay", function () {
                 const hashedSolution = hashCode(solution, nonce);
 
                 await game.connect(codeMaker).newSolutionHash(matchId, hashedSolution);
-                await expect(game.connect(codeMaker).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeMaker).newSolutionHash(matchId, hashedSolution)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should not fail if called from the CodeMaker once at the beginning of the game", async function () {
@@ -122,7 +122,7 @@ describe("Gameplay", function () {
                 const invalidMatchId = ethers.ZeroAddress;
                 const guess = newCode(1, 2, 3, 4);
 
-                await expect(game.connect(codeBreaker).newGuess(invalidMatchId, guess)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeBreaker).newGuess(invalidMatchId, guess)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -140,8 +140,8 @@ describe("Gameplay", function () {
 
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
@@ -149,14 +149,14 @@ describe("Gameplay", function () {
                 const { game, matchId, otherPlayer } = await loadFixture(phases.untilFirstRoundCodeHash);
                 const guess = newCode(1, 2, 3, 4);
 
-                await expect(game.connect(otherPlayer).newGuess(matchId, guess)).to.be.revertedWith("The caller is not the CodeBreaker");
+                await expect(game.connect(otherPlayer).newGuess(matchId, guess)).to.be.revertedWith("The caller is not the CodeBreaker.");
             });
 
             it("Should fail if called from the CodeMaker", async function () {
                 const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundCodeHash);
                 const guess = newCode(1, 2, 3, 4);
 
-                await expect(game.connect(codeMaker).newGuess(matchId, guess)).to.be.revertedWith("The caller is not the CodeBreaker");
+                await expect(game.connect(codeMaker).newGuess(matchId, guess)).to.be.revertedWith("The caller is not the CodeBreaker.");
             });
 
             it("Should fail if called more than once consecutively by the CodeBreaker", async function () {
@@ -164,28 +164,28 @@ describe("Gameplay", function () {
                 const guess = newCode(1, 2, 3, 4);
 
                 await game.connect(codeBreaker).newGuess(matchId, guess);
-                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should fail if called with an invalid code format", async function () {
                 const { game, matchId, codeBreaker } = await loadFixture(phases.untilFirstRoundCodeHash);
                 const guess = newCode(7, 7, 7, 7);
 
-                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Invalid guess format");
+                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Invalid guess format.");
             });
 
             it("Should fail if called after the submission of a feedback regarding a correct guess", async function () {
                 const { game, matchId, codeBreaker } = await loadFixture(phases.untilSecondRoundFeedback);
                 const guess = newCode(1, 2, 3, 4);
 
-                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should fail if called after the maximum number of guesses is reached", async function () {
                 const { game, matchId, codeBreaker } = await loadFixture(phases.untilFirstRoundLastFeedback);
                 const guess = newCode(1, 2, 3, 4);
 
-                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeBreaker).newGuess(matchId, guess)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should not fail if called from the CodeBreaker after the submission of the hashed solution", async function () {
@@ -233,7 +233,7 @@ describe("Gameplay", function () {
                 const invalidMatchId = ethers.ZeroAddress;
                 const feedback = newFeedback(0, 3);
 
-                await expect(game.connect(codeMaker).newFeedback(invalidMatchId, feedback)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeMaker).newFeedback(invalidMatchId, feedback)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -250,8 +250,8 @@ describe("Gameplay", function () {
 
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
@@ -259,14 +259,14 @@ describe("Gameplay", function () {
                 const { game, matchId, otherPlayer } = await loadFixture(phases.untilFirstRoundFirstGuess);
                 const feedback = newFeedback(0, 3);
 
-                await expect(game.connect(otherPlayer).newFeedback(matchId, feedback)).to.be.revertedWith("The caller is not the CodeMaker");
+                await expect(game.connect(otherPlayer).newFeedback(matchId, feedback)).to.be.revertedWith("The caller is not the CodeMaker.");
             });
 
             it("Should fail if called from the CodeBreaker", async function () {
                 const { game, matchId, codeBreaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
                 const feedback = newFeedback(0, 3);
 
-                await expect(game.connect(codeBreaker).newFeedback(matchId, feedback)).to.be.revertedWith("The caller is not the CodeMaker");
+                await expect(game.connect(codeBreaker).newFeedback(matchId, feedback)).to.be.revertedWith("The caller is not the CodeMaker.");
             });
 
             it("Should fail if called more than once consecutively by the CodeMaker", async function () {
@@ -274,14 +274,14 @@ describe("Gameplay", function () {
                 const feedback = newFeedback(0, 3);
 
                 await game.connect(codeMaker).newFeedback(matchId, feedback);
-                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should fail if called with an invalid code format", async function () {
                 const { game, matchId, codeMaker } = await loadFixture(phases.untilFirstRoundFirstGuess);
                 const feedback = newFeedback(5, 5);
 
-                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.be.revertedWith("Invalid feedback format");
+                await expect(game.connect(codeMaker).newFeedback(matchId, feedback)).to.be.revertedWith("Invalid feedback format.");
             });
 
             it("Should not fail if called from the CodeMaker after the submission of a guess", async function () {
@@ -359,7 +359,7 @@ describe("Gameplay", function () {
                 const { game, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
                 const invalidMatchId = ethers.ZeroAddress;
 
-                await expect(game.connect(codeMaker).uploadSolution(invalidMatchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeMaker).uploadSolution(invalidMatchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -375,28 +375,28 @@ describe("Gameplay", function () {
 
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.uploadSolution(matchId, solution, salt)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).uploadSolution(matchId, solution, salt)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.uploadSolution(matchId, solution, salt)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).uploadSolution(matchId, solution, salt)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
                 const { game, matchId, otherPlayer, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
-                await expect(game.connect(otherPlayer).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The caller is not the CodeMaker");
+                await expect(game.connect(otherPlayer).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The caller is not the CodeMaker.");
             });
 
             it("Should fail if called from the CodeBreaker", async function () {
                 const { game, matchId, codeBreaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
-                await expect(game.connect(codeBreaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The caller is not the CodeMaker");
+                await expect(game.connect(codeBreaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("The caller is not the CodeMaker.");
             });
 
             it("Should fail if called more than once consecutively by the CodeMaker", async function () {
                 const { game, matchId, codeMaker, solution } = await loadFixture(phases.untilFirstRoundLastFeedback);
 
                 await game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt);
-                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, solution.encodedSalt)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should fail if called with an invalid code format", async function () {
@@ -404,7 +404,7 @@ describe("Gameplay", function () {
                 const solution = newCode(7, 1, 2, 3);
                 const salt = prepareSalt(1234);
 
-                await expect(game.connect(codeMaker).uploadSolution(matchId, solution, salt)).to.be.revertedWith("Invalid solution format");
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution, salt)).to.be.revertedWith("Invalid solution format.");
             });
 
             it("Should terminate the match if called with a solution different from the one submitted initially", async function () {
@@ -415,7 +415,7 @@ describe("Gameplay", function () {
 
                 // in this case if the error is that the match specified 
                 // doesn't exist it means that the match has been deleted
-                await expect(game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeMaker).uploadSolution(matchId, code, solution.encodedSalt)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should terminate the match if called with a salt different from the one used initially", async function () {
@@ -426,7 +426,7 @@ describe("Gameplay", function () {
 
                 // in this case if the error is that the match specified 
                 // doesn't exist it means that the match has been deleted
-                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, salt)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeMaker).uploadSolution(matchId, solution.code, salt)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should terminate the game if called in last round", async function () {
@@ -436,7 +436,7 @@ describe("Gameplay", function () {
 
                 // in this case if the error is that the operation is not 
                 // permitted it means that the game is ended
-                await expect(game.connect(codeBreaker).newSolutionHash(matchId, solution.codeHash)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.connect(codeBreaker).newSolutionHash(matchId, solution.codeHash)).to.be.revertedWith("Operation not permitted in this phase of the game.");
             });
 
             it("Should not terminate the game if not called in the last round", async function () {
@@ -611,7 +611,7 @@ describe("Gameplay", function () {
 
                 expect(event.id).to.be.equal(matchId);
                 expect(event.player).to.be.equal(codeMaker.address);
-                expect(event.reason).to.be.equal("Wrong solution provided");
+                expect(event.reason).to.be.equal("Wrong solution provided.");
             });
 
             it("Should emit an event when called by the CodeMaker if called with a solution different from the one submitted initially signaling that match has been terminated", async function () {
@@ -649,7 +649,7 @@ describe("Gameplay", function () {
 
                 expect(event.id).to.be.equal(matchId);
                 expect(event.player).to.be.equal(codeMaker.address);
-                expect(event.reason).to.be.equal("Wrong solution provided");
+                expect(event.reason).to.be.equal("Wrong solution provided.");
             });
 
             it("Should emit an event when called by the CodeMaker if called with a salt different from the one used initially signaling that match has been terminated", async function () {
@@ -702,7 +702,7 @@ describe("Gameplay", function () {
                 const { game } = await loadFixture(phases.untilLastRoundSolution);
                 const invalidMatchId = ethers.ZeroAddress;
 
-                await expect(game.checkWinner(invalidMatchId)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.checkWinner(invalidMatchId)).to.be.revertedWith("The match specified does not exist.");
             });
 
             it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -713,21 +713,21 @@ describe("Gameplay", function () {
 
                     const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                    await expect(game.checkWinner(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
-                    await expect(game.connect(challenger).checkWinner(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game");
+                    await expect(game.checkWinner(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                    await expect(game.connect(challenger).checkWinner(matchId)).to.be.revertedWith("Operation not permitted in this phase of the game.");
                 }
             });
 
             it("Should fail if called by someone which is not part of the match", async function () {
                 const { game, matchId, otherPlayer } = await loadFixture(phases.untilLastRoundSolution);
 
-                await expect(game.connect(otherPlayer).checkWinner(matchId)).to.be.revertedWith("You are not part of the match specified");
+                await expect(game.connect(otherPlayer).checkWinner(matchId)).to.be.revertedWith("You are not part of the match specified.");
             });
 
             it("Should fail if called by the CodeMaker before the dispute time is ended", async function () {
                 const { game, matchId, codeMaker } = await loadFixture(phases.untilLastRoundSolution);
 
-                await expect(game.connect(codeMaker).checkWinner(matchId)).to.be.revertedWith("You must first wait for the dispute time");
+                await expect(game.connect(codeMaker).checkWinner(matchId)).to.be.revertedWith("You must first wait for the dispute time.");
             });
 
             it("Should not fail if called by the CodeMaker after the dispute time is ended", async function () {
@@ -756,7 +756,7 @@ describe("Gameplay", function () {
 
                 // in this case if the error is that the match specified 
                 // doesn't exist it means that the match has been deleted
-                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.be.revertedWith("The match specified does not exist");
+                await expect(game.connect(codeBreaker).checkWinner(matchId)).to.be.revertedWith("The match specified does not exist.");
             });
         });
 

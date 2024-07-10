@@ -1,5 +1,5 @@
 import ethers from "ethers";
-import { MatchStateAction } from "../reducers/MatchStateReducer";
+
 import { contract, provider } from "../configs/contract";
 
 import { COLOR_CODES } from "../configs/constants";
@@ -30,10 +30,10 @@ const logEvent = (name: ethers.ContractEventName, args: ethers.ethers.Result) =>
     console.log(logMsg);
 }
 
-export const setListener = <T>(topic: ethers.DeferredTopicFilter, distpatchFn: React.Dispatch<T>, actionFn: (args: any[]) => T) => {
+export const setListener = (topic: ethers.DeferredTopicFilter, actionFn: (args: any[]) => void) => {
     const eventHandler = (event: ethers.ContractEventPayload) => {
         logEvent(event.eventName, event.args);
-        distpatchFn(actionFn(event.args.toArray()));
+        actionFn(event.args.toArray());
         contract.off(topic);
     };
 
@@ -44,19 +44,24 @@ export const removeAllListeners = () => {
     contract.removeAllListeners();
 }
 
-export const searchEvent = <T>(topic: ethers.DeferredTopicFilter, distpatchFn: React.Dispatch<T>, actionFn: (args: any[]) => T) => {
+export const searchEvent = (topic: ethers.DeferredTopicFilter, actionFn: (args: any[]) => void) => {
     const code = async () => {
         provider.getLogs({
             address: await contract.getAddress(),
             topics: await topic.getTopicFilter()
         }).then((logs) => {
-            const parsedLog = contract.interface.parseLog(logs[0]);
-            if (parsedLog === null) {
-                return;
-            }
+            let found = false;
+            logs.forEach((log) => {
+                const parsedLog = contract.interface.parseLog(log);
+                if (parsedLog === null || found) {
+                    return;
+                } else {
+                    found = true;
+                }
 
-            logEvent(parsedLog.name, parsedLog.args);
-            distpatchFn(actionFn(parsedLog.args.toArray()));
+                logEvent(parsedLog.name, parsedLog.args);
+                actionFn(parsedLog.args.toArray());
+            })
         }).catch(() => { });
     };
 

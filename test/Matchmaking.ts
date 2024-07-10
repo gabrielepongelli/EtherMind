@@ -11,7 +11,7 @@ describe("Matchmaking", function () {
                 const { game, creator } = await loadFixture(untilDeploy);
 
                 await expect(game.createMatch(creator.address)).to.be.revertedWith(
-                    "You cannot create a private match with yourself"
+                    "You cannot create a private match with yourself."
                 );
             });
 
@@ -61,7 +61,7 @@ describe("Matchmaking", function () {
                 const { game, creator } = await loadFixture(untilDeploy);
 
                 await expect(game.joinMatch(creator.address, 10)).to.be.revertedWith(
-                    "Invalid match id"
+                    "Invalid match id."
                 );
             });
 
@@ -71,7 +71,7 @@ describe("Matchmaking", function () {
                 const matchId = await getMatchFromEvent(tx);
 
                 await expect(game.joinMatch(matchId, 10)).to.be.revertedWith(
-                    "You cannot join your own game"
+                    "You cannot join your own game."
                 );
             });
 
@@ -81,7 +81,7 @@ describe("Matchmaking", function () {
                 const matchId = await getMatchFromEvent(tx);
 
                 await expect(game.connect(otherPlayer).joinMatch(matchId, 0)).to.be.revertedWith(
-                    "You are not allowed to join this match"
+                    "You are not allowed to join this match."
                 );
             });
 
@@ -89,7 +89,7 @@ describe("Matchmaking", function () {
                 const { game } = await loadFixture(untilDeploy);
 
                 await expect(game.joinMatch(ethers.ZeroAddress, 10)).to.be.revertedWith(
-                    "There are no available matches"
+                    "There are no available matches."
                 );
             });
 
@@ -98,7 +98,7 @@ describe("Matchmaking", function () {
                 await game.createMatch(ethers.ZeroAddress);
 
                 await expect(game.joinMatch(ethers.ZeroAddress, 10)).to.be.revertedWith(
-                    "There are no available matches"
+                    "There are no available matches."
                 );
             });
 
@@ -133,7 +133,7 @@ describe("Matchmaking", function () {
 
                 await game.connect(challenger).joinMatch(matchId, 10);
                 await expect(game.connect(otherPlayer).joinMatch(matchId, 10)).to.be.revertedWith(
-                    "The match specified is already started or do not exists"
+                    "The match specified is already started or does not exists."
                 );
             });
         });

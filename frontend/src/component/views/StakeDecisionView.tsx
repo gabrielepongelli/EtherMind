@@ -12,7 +12,6 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { contract, wallet } from "../../configs/contract";
 import { proposeStake } from "../../utils/contractInteraction";
 import { setListener, removeAllListeners } from '../../utils/utils';
-import { MatchStateAction } from "../../reducers/MatchStateReducer";
 
 export const StakeDecisionView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -20,22 +19,31 @@ export const StakeDecisionView: React.FC = () => {
     const [stake, setStake] = useState("");
 
     useEffect(() => {
-        setListener<MatchStateAction>(contract.filters.StakeFixed(matchState.matchID, null),
-            dispatchMatchState, (args) => {
-                return { type: "stake approved", amount: args[1] };
-            });
+        setListener(contract.filters.StakeFixed(matchState.matchID, null), (args) => {
+            dispatchMatchState({ type: "stake approved", amount: args[1] });
+        });
 
         if (matchState.waiting) {
             const proposalSender = matchState.proposed ? wallet.address : matchState.opponent as string;
 
             const filter = contract.filters.StakeProposal(matchState.matchID, proposalSender, null);
-            setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
-                return { type: "stake proposal", waiting: false, proposed: args[1] === wallet.address, amount: args[2] };
+            setListener(filter, (args) => {
+                dispatchMatchState({
+                    type: "stake proposal",
+                    waiting: false,
+                    proposed: args[1] === wallet.address,
+                    amount: args[2]
+                });
             });
         } else if (matchState.proposed) {
             const filter = contract.filters.StakeProposal(matchState.matchID, matchState.opponent as string, null);
-            setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
-                return { type: "stake proposal", waiting: false, proposed: false, amount: args[2] };
+            setListener(filter, (args) => {
+                dispatchMatchState({
+                    type: "stake proposal",
+                    waiting: false,
+                    proposed: false,
+                    amount: args[2]
+                });
             });
         }
 

@@ -52,6 +52,7 @@ export interface MatchState {
     opponentFinalScore?: number
     endMsg?: string
     punished?: boolean
+    afkAlertShowed?: boolean
 }
 
 export enum GamePhase {

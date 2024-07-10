@@ -10,7 +10,7 @@ describe("Stake payment", function () {
             const { game, finalStake } = await loadFixture(phases.untilStakeDecision);
             const invalidMatchId = ethers.ZeroAddress;
 
-            await expect(game.payStake(invalidMatchId, { value: finalStake })).to.be.revertedWith("The match specified does not exist");
+            await expect(game.payStake(invalidMatchId, { value: finalStake })).to.be.revertedWith("The match specified does not exist.");
         });
 
         it("Should fail if called on a match that is in the wrong phase", async function () {
@@ -21,28 +21,28 @@ describe("Stake payment", function () {
 
                 const { game, challenger, matchId } = await loadFixture(phaseFn);
 
-                await expect(game.payStake(matchId, { value: 10 })).to.be.revertedWith("Operation not permitted in this phase of the game");
-                await expect(game.connect(challenger).payStake(matchId, { value: 10 })).to.be.revertedWith("Operation not permitted in this phase of the game");
+                await expect(game.payStake(matchId, { value: 10 })).to.be.revertedWith("Operation not permitted in this phase of the game.");
+                await expect(game.connect(challenger).payStake(matchId, { value: 10 })).to.be.revertedWith("Operation not permitted in this phase of the game.");
             }
         });
 
         it("Should fail if called by someone which is not part of the match", async function () {
             const { game, matchId, otherPlayer } = await loadFixture(phases.untilStakeDecision);
 
-            await expect(game.connect(otherPlayer).payStake(matchId, { value: 10 })).to.be.revertedWith("You are not part of the match specified");
+            await expect(game.connect(otherPlayer).payStake(matchId, { value: 10 })).to.be.revertedWith("You are not part of the match specified.");
         });
 
         it("Should fail if called with the wrong amount of money", async function () {
             const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
 
-            await expect(game.payStake(matchId, { value: finalStake + 1 })).to.be.revertedWith("Wrong stake value");
+            await expect(game.payStake(matchId, { value: finalStake + 1 })).to.be.revertedWith("Wrong stake value.");
         });
 
         it("Should fail if called more than once by the same player", async function () {
             const { game, matchId, finalStake } = await loadFixture(phases.untilStakeDecision);
 
             await game.payStake(matchId, { value: finalStake });
-            await expect(game.payStake(matchId, { value: finalStake })).to.be.revertedWith("You have already payed");
+            await expect(game.payStake(matchId, { value: finalStake })).to.be.revertedWith("You have already payed.");
         });
 
         it("Should not fail if called with the right amount of money", async function () {
@@ -57,7 +57,7 @@ describe("Stake payment", function () {
             await game.payStake(matchId, { value: finalStake });
             await game.connect(challenger).payStake(matchId, { value: finalStake });
 
-            await expect(game.payStake(matchId, { value: finalStake })).to.be.revertedWith("Operation not permitted in this phase of the game");
+            await expect(game.payStake(matchId, { value: finalStake })).to.be.revertedWith("Operation not permitted in this phase of the game.");
         });
     });
 

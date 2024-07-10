@@ -105,7 +105,7 @@ export const EndView: React.FC = () => {
     } else if (matchState.punished) {
         const errorMsg = matchState.endMsg?.includes("accused")
             ? matchState.endMsg?.replace("Player", "You").replace("the", "your")
-            : "You were AFK for too long";
+            : "You were AFK for too long.";
 
         return (
             <TitleBox>

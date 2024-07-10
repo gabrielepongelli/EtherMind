@@ -11,7 +11,6 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { joinMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
 import { setListener, removeAllListeners } from '../../utils/utils';
-import { MatchStateAction } from '../../reducers/MatchStateReducer';
 
 export const JoinMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
@@ -43,8 +42,13 @@ export const JoinMatchView: React.FC = () => {
         }
 
         const filter = contract.filters.MatchStarted(null, null, wallet.address);
-        setListener<MatchStateAction>(filter, dispatchMatchState, (args) => {
-            return { type: 'started', matchId: args[0], opponent: args[1], joiner: true };
+        setListener(filter, (args) => {
+            dispatchMatchState({
+                type: 'started',
+                matchId: args[0],
+                opponent: args[1],
+                joiner: true
+            });
         });
 
         return removeAllListeners;

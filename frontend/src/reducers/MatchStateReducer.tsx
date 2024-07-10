@@ -13,7 +13,8 @@ export const initialMatchState: MatchState = {
     yourFinalScore: undefined,
     opponentFinalScore: undefined,
     endMsg: undefined,
-    punished: undefined
+    punished: undefined,
+    afkAlertShowed: undefined
 };
 
 export type MatchStateAction =
@@ -30,8 +31,11 @@ export type MatchStateAction =
     | { type: "stake payed", waiting: true }
     | { type: "stake payed", waiting: false }
     | { type: "game started" }
-    | { type: "game ended", reason: "dispute", punished: boolean, msg: string }
-    | { type: "game ended", reason: "game finished", yourScore: number, opponentScore: number }
+    | { type: "game ended", genuine: false, punished: boolean, msg: string }
+    | { type: "game ended", genuine: true, yourScore: number, opponentScore: number }
+    | { type: "afk started", move: boolean }
+    | { type: "afk continue" }
+    | { type: "afk reset" }
     | { type: "error", msg: string }
 
 export const matchStateReducer = (state: MatchState, action: MatchStateAction): MatchState => {
@@ -111,23 +115,36 @@ export const matchStateReducer = (state: MatchState, action: MatchStateAction): 
                 error: undefined
             };
         case "game started":
-            return { ...state, phase: MatchPhase.GAME_STARTED, error: undefined };
+            return {
+                ...state,
+                phase: MatchPhase.GAME_STARTED,
+                error: undefined,
+                afkAlertShowed: undefined
+            };
         case "game ended":
-            if (action.reason == "dispute") {
-                return {
-                    ...state,
-                    phase: MatchPhase.GAME_ENDED,
-                    endMsg: action.msg,
-                    punished: action.punished
-                };
-            } else if (action.reason == "game finished") {
+            if (action.genuine) {
                 return {
                     ...state,
                     phase: MatchPhase.GAME_ENDED,
                     yourFinalScore: action.yourScore,
-                    opponentFinalScore: action.opponentScore
+                    opponentFinalScore: action.opponentScore,
+                    afkAlertShowed: undefined
                 }
+            } else {
+                return {
+                    ...state,
+                    phase: MatchPhase.GAME_ENDED,
+                    endMsg: action.msg,
+                    punished: action.punished,
+                    afkAlertShowed: undefined
+                };
             }
+        case "afk started":
+            return { ...state, afkAlertShowed: !action.move };
+        case "afk continue":
+            return { ...state, afkAlertShowed: true }
+        case "afk reset":
+            return { ...state, afkAlertShowed: undefined }
         case "error":
             return { ...state, waiting: false, error: action.msg }
     }
