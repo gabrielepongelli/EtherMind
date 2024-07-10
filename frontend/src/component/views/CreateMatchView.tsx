@@ -12,15 +12,13 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { createMatch } from '../../utils/contractInteraction';
 import { contract, wallet } from '../../configs/contract';
 import { setListener, removeAllListeners } from '../../utils/utils';
+import { DoneIcon } from '../DoneIcon';
 
 export const CreateMatchView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
     const dispatchMatchState = useContext(MatchStateSetContext);
     const [playerAddress, setplayerAddress] = useState("");
-
-    const handleCopyIconClick = async () => {
-        await navigator.clipboard.writeText(matchState.matchID || "");
-    };
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         const filter = contract.filters.MatchCreated(null, wallet.address);
@@ -49,6 +47,11 @@ export const CreateMatchView: React.FC = () => {
         return removeAllListeners;
     }, []);
 
+    const handleCopyIconClick = async () => {
+        await navigator.clipboard.writeText(matchState.matchID || "");
+        setCopied(true);
+    };
+
     const handlePlayerAddressInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setplayerAddress(event.target.value);
     };
@@ -70,6 +73,10 @@ export const CreateMatchView: React.FC = () => {
         />
     );
 
+    const copyIcon = copied
+        ? (<DoneIcon />)
+        : (<CopyIcon />);
+
     if (matchState.waiting) {
         return (
             <TitleBox><Spinner /></TitleBox>
@@ -83,7 +90,13 @@ export const CreateMatchView: React.FC = () => {
                         text={"Match ID: " + matchState.matchID}
                         type="info"
                     >
-                        <CopyIcon onclick={handleCopyIconClick} />
+                        <button
+                            type="button"
+                            className='btn p-0'
+                            onClick={handleCopyIconClick}
+                        >
+                            {copyIcon}
+                        </button>
                     </Notice>
                     <p className='text-center'>Waiting for opponent...</p>
                 </div>
