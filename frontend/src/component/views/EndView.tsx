@@ -103,7 +103,7 @@ export const EndView: React.FC = () => {
             </TitleBox>
         );
     } else if (matchState.punished) {
-        const errorMsg = matchState.endMsg?.includes("accused")
+        const errorMsg = !matchState.endMsg?.includes("AFK")
             ? matchState.endMsg?.replace("Player", "You").replace("the", "your")
             : "You were AFK for too long.";
 
@@ -112,7 +112,7 @@ export const EndView: React.FC = () => {
                 <div>
                     {infoBar}
                     <Notice
-                        text={errorMsg}
+                        text={errorMsg as string}
                         type="failure"
                         children={<></>}
                     />
@@ -126,7 +126,7 @@ export const EndView: React.FC = () => {
             </TitleBox>
         );
     } else {
-        const errorMsg = (matchState.endMsg?.includes("accused")
+        const errorMsg = (!matchState.endMsg?.includes("AFK")
             ? "You have been unjustly accused."
             : "Your opponent is AFK.") + " The match is ended, and the stake has been entirely transferred to you.";
 
