@@ -1,6 +1,6 @@
 import ethers from "ethers";
 
-import { contract, provider } from "../configs/contract";
+import { contract } from "../configs/contract";
 
 import { COLOR_CODES } from "../configs/constants";
 import { Color } from "./generalTypes";
@@ -34,38 +34,13 @@ export const setListener = (topic: ethers.DeferredTopicFilter, actionFn: (args: 
     const eventHandler = (event: ethers.ContractEventPayload) => {
         logEvent(event.eventName, event.args);
         actionFn(event.args.toArray());
-        contract.off(topic);
     };
 
-    contract.on(topic, eventHandler);
+    contract.once(topic, eventHandler);
 }
 
 export const removeAllListeners = () => {
     contract.removeAllListeners();
-}
-
-export const searchEvent = (topic: ethers.DeferredTopicFilter, actionFn: (args: any[]) => void) => {
-    const code = async () => {
-        provider.getLogs({
-            address: await contract.getAddress(),
-            topics: await topic.getTopicFilter()
-        }).then((logs) => {
-            let found = false;
-            logs.forEach((log) => {
-                const parsedLog = contract.interface.parseLog(log);
-                if (parsedLog === null || found) {
-                    return;
-                } else {
-                    found = true;
-                }
-
-                logEvent(parsedLog.name, parsedLog.args);
-                actionFn(parsedLog.args.toArray());
-            })
-        }).catch(() => { });
-    };
-
-    code();
 }
 
 export const colorToIdx = (color: Color) => {

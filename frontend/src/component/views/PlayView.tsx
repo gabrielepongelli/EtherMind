@@ -19,7 +19,7 @@ import { gameStateReducer, initialGameState } from "../../reducers/GameStateRedu
 
 import { contract, wallet } from "../../configs/contract";
 import { uploadHash, uploadGuess, uploadFeedback, uploadSolution, decodeCode, decodeFeedback, sendDispute, checkWhoWinner } from "../../utils/contractInteraction";
-import { setListener, removeAllListeners, Pair, searchEvent } from '../../utils/utils';
+import { setListener, removeAllListeners, Pair } from '../../utils/utils';
 
 import { GamePhase, Solution, Code, Feedback } from "../../utils/generalTypes";
 
@@ -222,22 +222,19 @@ export const PlayView: React.FC = () => {
                 });
             dispatchGameState({ type: "scores updated", waiting: true });
         } else {
-            const filter = contract.filters.RoundStarted(matchState.matchID, gameState.round as number + 1, null, null);
-            searchEvent(filter, (args) => {
-                if (args[2] === wallet.address) {
-                    dispatchGameState({
-                        type: "round started",
-                        role: "maker",
-                        round: Number(args[1])
-                    });
-                } else {
-                    dispatchGameState({
-                        type: "round started",
-                        role: "breaker",
-                        round: Number(args[1])
-                    });
-                }
-            });
+            if (gameState.role === "breaker") {
+                dispatchGameState({
+                    type: "round started",
+                    role: "maker",
+                    round: (gameState.round as number) + 1
+                });
+            } else {
+                dispatchGameState({
+                    type: "round started",
+                    role: "breaker",
+                    round: (gameState.round as number) + 1
+                });
+            }
         }
     }
 

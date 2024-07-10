@@ -13,7 +13,6 @@ import { MatchStateContext, MatchStateSetContext } from "../../contexts/MatchSta
 import { contract, wallet } from "../../configs/contract";
 import { payStake } from "../../utils/contractInteraction";
 import { setListener, removeAllListeners } from '../../utils/utils';
-import { MatchStateAction } from "../../reducers/MatchStateReducer";
 
 export const StakePaymentView: React.FC = () => {
     const matchState = useContext(MatchStateContext);
