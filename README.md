@@ -14,11 +14,15 @@
         INFURA_API_KEY=YOUR-INFURA-API-KEY
         SEPOLIA_PRIVATE_KEY=YOUR-SEPOLIA-PRIVATE-KEY
         ```
-2. Compile the contract:
+2. Install the project dependencies:
+    ```bash
+    npm install
+    ```
+3. Compile the contract:
     ```bash
     npx hardhat compile
     ```
-3. Deploy it:
+4. Deploy it:
     - For the deployment on a local node:
         ```bash
         npx hardhat ignition deploy ./ignition/modules/EtherMind.ts --network localhost
@@ -71,3 +75,5 @@ If you don't want to start a local node, skip steps 4-6.
     > **Note**: remember to set the PORT.
     
     > **Note**: if you want to start multiple instances, just repeat this last command changing PORT and ETHERMIND_PRIVATE_KEY.
+
+An example of docker compose file can be seen at `/docker-compose.yml`.
