@@ -16,7 +16,7 @@
         ```
 2. Install the project dependencies:
     ```bash
-    npm install
+    npm install --force
     ```
 3. Compile the contract:
     ```bash
@@ -34,7 +34,7 @@
 
 ## How to run the frontend
 
-If you don't want to start a local node, skip steps 4-6.
+If you don't want to start a local node, skip steps 4-7.
 1. Download the repo (this can be skipped if you have already downloaded it):
     ```bash
     git clone https://github.com/gabrielepongelli/EtherMind
@@ -47,33 +47,43 @@ If you don't want to start a local node, skip steps 4-6.
     ```bash
     docker build -t ethermind .
     ```
-4. Start the local hardhat node:
+4. Install the project dependencies:
+    ```bash
+    npm install --force
+    ```
+5. Start the local hardhat node:
     ```bash
     echo "HARDHAT_CONFIG=dev" >> .env
     echo "EXTERNAL_NODE=true" >> .env
     npx hardhat node
     ```
-5. Compile the contract:
+6. Compile the contract:
     ```bash
     npx hardhat compile
     ```
-6. Deploy it on the local node:
+7. Deploy it on the local node:
     ```bash
     npx hardhat ignition deploy ./ignition/modules/EtherMind.ts --network localhost
     ```
-7. Start an instance of the frontend:
+8. Start an instance of the frontend:
     ```bash
     docker run \
             --rm \
             -it \
             -p PORT:8000 \
-            -e ETHERMIND_BLOCKCHAIN_PROVIDER_URL="http://0.0.0.0:8545" \
+            -e ETHERMIND_BLOCKCHAIN_PROVIDER_URL="PROVIDER_URL" \
             -e ETHERMIND_CONTRACT_ADDRESS="0xCONTRACT_ADDRESS" \
             -e ETHERMIND_PRIVATE_KEY="0xONE_OF_THE_PRIVATE_KEYS" \
             ethermind
     ```
-    > **Note**: remember to set the PORT.
-    
-    > **Note**: if you want to start multiple instances, just repeat this last command changing PORT and ETHERMIND_PRIVATE_KEY.
+    Replace to the above command the values:
+    - `PORT` with the port number you want to use.
+    - `PROVIDER_URL` with the URL of the node to connect (if you want to use a local node, set it to `http://0.0.0.0:8545`).
+    - `0xCONTRACT_ADDRESS` with the address of the contract **starting with `0x`**.
+    - `0xONE_OF_THE_PRIVATE_KEYS` with the private key of the account you want to use **starting with `0x`**.
+9. Now you can access the web interface from `http://localhost:PORT/`
+
+
+> **Note**: if you want to start multiple instances, just repeat this last command changing PORT and ETHERMIND_PRIVATE_KEY.
 
 An example of docker compose file can be seen at `/docker-compose.yml`.
