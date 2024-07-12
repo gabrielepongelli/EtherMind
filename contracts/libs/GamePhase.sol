@@ -9,7 +9,7 @@ pragma solidity ^0.8.24;
  * 4. STAKE_PAYMENT: the players need to pay the stake.
  * 5. ROUND_START: a new round is started.
  * 6. GUESS_SUBMISSION: the CodeBreaker has to upload its guess.
- * 7. FEEDBACK_SUBMISSION: the CodeMaker has to upload its guess.
+ * 7. FEEDBACK_SUBMISSION: the CodeMaker has to upload its feedback.
  * 7. ROUND_END: the current round is ended.
  * 8. GAME_END: the game is finished.
  */

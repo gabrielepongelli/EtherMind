@@ -40,7 +40,7 @@ export const EndView: React.FC = () => {
                     <DataInfo text={"Match ID: " + matchState.matchID} />
                 </div>
                 <div className="col">
-                    <DataInfo text={"Stake: " + matchState.stakeProposed + " Gwei"} />
+                    <DataInfo text={"Stake: " + matchState.stakeProposed + " Wei"} />
                 </div>
                 <div className="col">
                     <DataInfo text={"Opponent: " + matchState.opponent} />
@@ -78,7 +78,7 @@ export const EndView: React.FC = () => {
         } else if ((matchState.yourFinalScore as number) >= (matchState.opponentFinalScore as number)) {
             notice = (
                 <Notice
-                    text={"You won " + (Number((matchState.stakeProposed as bigint)) * 2).toString() + " Gwei!"}
+                    text={"You won " + (Number((matchState.stakeProposed as bigint)) * 2).toString() + " Wei!"}
                     type="success"
                     children={<></>}
                 />

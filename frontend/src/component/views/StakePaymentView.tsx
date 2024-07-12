@@ -86,7 +86,7 @@ export const StakePaymentView: React.FC = () => {
                 <DataInfo text={"Match ID: " + matchState.matchID} />
             </div>
             <div className="col">
-                <DataInfo text={"Stake: " + matchState.stakeProposed + " Gwei"} />
+                <DataInfo text={"Stake: " + matchState.stakeProposed + " Wei"} />
             </div>
             <div className="col">
                 <DataInfo text={"Opponent: " + matchState.opponent} />

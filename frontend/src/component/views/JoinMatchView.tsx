@@ -87,7 +87,7 @@ export const JoinMatchView: React.FC = () => {
                     {matchIdInput}
                     <div className="mb-3">
                         <TextInputBar
-                            placeholder='Stake Proposal (in Gwei)'
+                            placeholder='Stake Proposal (in Wei)'
                             leftText='⧫'
                             onchange={stakeHandler}
                             children={<></>} />

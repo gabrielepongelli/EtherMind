@@ -108,7 +108,7 @@ export const StakeDecisionView: React.FC = () => {
                     {infoBar}
                     {errorMsg}
                     <Notice
-                        text={"Proposed: " + matchState.stakeProposed + " Gwei"}
+                        text={"Proposed: " + matchState.stakeProposed + " Wei"}
                         type="success"
                         children={undefined} />
                     <div className="text-center">
@@ -124,7 +124,7 @@ export const StakeDecisionView: React.FC = () => {
                     {infoBar}
                     {errorMsg}
                     <Notice
-                        text={"Stake proposed: " + matchState.stakeProposed + " Gwei"}
+                        text={"Stake proposed: " + matchState.stakeProposed + " Wei"}
                         type="info"
                         children={undefined} />
                     <div className='justify-content-center'>
@@ -142,7 +142,7 @@ export const StakeDecisionView: React.FC = () => {
                     <div className="row">
                         <div className="col mb-3">
                             <TextInputBar
-                                placeholder='Stake Proposal (in Gwei)'
+                                placeholder='Stake Proposal (in Wei)'
                                 leftText='⧫'
                                 onchange={stakeHandler}
                                 children={<></>} />
