@@ -8,6 +8,7 @@ This is a project for the Peer to Peer Systems and Blockchains course of the Uni
 - [Prerequisites](#prerequisites)
 - [How to Deploy the Contract](#how-to-deploy-the-contract)
 - [How to Run the Sample Frontend Application](#how-to-run-the-frontend)
+- [License](#license)
 
 ## Project Structure
 
@@ -159,3 +160,7 @@ If you don't want to start a local node, skip steps 4-7.
 > **Note**: if you want to start multiple instances, just repeat this last command changing `PORT` and `ETHERMIND_PRIVATE_KEY`.
 
 An example of docker compose file can be seen at `/docker-compose.yml`.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
