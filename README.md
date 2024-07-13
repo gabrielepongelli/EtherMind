@@ -7,7 +7,7 @@ This is a project for the Peer to Peer Systems and Blockchains course of the Uni
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [How to Deploy the Contract](#how-to-deploy-the-contract)
-- [How to Run the Sample Frontend Application](#how-to-run-the-frontend)
+- [How to Run the Sample Frontend Application](#how-to-run-the-sample-frontend-application)
 - [License](#license)
 
 ## Project Structure
@@ -105,7 +105,7 @@ Before running the application, ensure you have the following installed:
         npx hardhat ignition deploy ./ignition/modules/EtherMind.ts --network sepolia
         ```
 
-## How to run the frontend
+## How to Run the Sample Frontend Application
 
 If you don't want to start a local node, skip steps 4-7.
 1. Download the repo (this can be skipped if you have already downloaded it):
