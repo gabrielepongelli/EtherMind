@@ -127,8 +127,11 @@ export const EndView: React.FC = () => {
         );
     } else {
         const errorMsg = (!matchState.endMsg?.includes("AFK")
-            ? "You have been unjustly accused."
-            : "Your opponent is AFK.") + " The match is ended, and the stake has been entirely transferred to you.";
+            ? (matchState.endMsg?.includes("false")
+                ? "Your opponent provided false feedbacks."
+                : "You have been unjustly accused.")
+            : "Your opponent is AFK."
+        ) + " The match is ended, and the stake has been entirely transferred to you.";
 
         return (
             <TitleBox>
